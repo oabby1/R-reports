@@ -14,7 +14,8 @@ library("gitcreds")
 gitcreds_set()
 
 # make a repo
-
+ use_git()
 
 #send to github
+use_github()
 
