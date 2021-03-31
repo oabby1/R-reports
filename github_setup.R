@@ -17,5 +17,6 @@ gitcreds_set()
  use_git()
 
 #send to github
-use_github()
+use_github(organisation = "rin3-spring-2021", private = TRUE)
 
+#adding more code to test new commit
