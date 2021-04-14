@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Measles is disease that was essentially suppressed for 25 years in the U.S. through vaccination, but **showed a significant resurgence** in 2019.
 
-This report examines data from 46,412 schools among 32 states that collected student measles, mumps and rubella (MMR) vaccination data between 2017 and 2019. By looking at how many students have been abiding by state vaccine recommendations for MMR, public health organizations and schools may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
+This report examines data from 32 states that collected student measles, mumps and rubella (MMR) vaccination data for kindergarteners between 2017 and 2019. By looking at how many students have been abiding by state vaccine recommendations for MMR, public health organizations and schools may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
 
 ```{r}
 library(tidyverse)
@@ -25,103 +25,171 @@ library(skimr)
 
 #Get the Data
 ```{r}
-measles <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-25/measles.csv')
+measles <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-25/measles.csv')
 ```
-##*Note: What are other ways of importing data from URL (is this base R)? How can I export the measles dataset to my local device?
+##*Note: How can I export the measles dataset to my data-raw folder, or my local device?
 
 ```{r}
 measles
 ```
 ```{r}
-measles %>% 
+measles <- measles %>% 
   clean_names()
 ```
-## About Reporting Schools
+# About Reporting Schools
 
-Thirty-two states reported overall and MMR vaccination rates in the 2017-2018 or 2018-2019 school years, with as many as 16,098 schools reporting from the large state of CA and as few as 230 from small Rhode Island. Among schools that reported school type, most were public (20,692), followed by private and kindergarten only, and then much smaller representation of charter, nonprivate and BOCES (a New York combined education services model).
+46,412 schools from 32 states reported overall and MMR vaccination rates in the 2017-2018 or 2018-2019 school years, with as many as 16,098 schools reporting from the large state of CA and as few as 230 from small Rhode Island. Among schools that reported school type, most were public (20,692), followed by private and kindergarten only, and then much smaller representation of charter, nonprivate and BOCES (a New York combined education services model, of which there were 42).
 ##Number of Schools Reporting Vaccination Data, by State
 
 ```{r}
 measles %>% 
   count(state)
+  # %>% 
+#arrange(n)
 ```
 #schools by type
 ```{r}
 measles %>% 
   count(type) %>% 
-  drop_na(type)
+  drop_na(type) %>% 
+  arrange(n)
 ```
 #Add something about geography, or map school locations TBD
 
-# Average Vaccination Rates Among Schools
+#Maybe look at schools by year, which reported for 2017-18 vs 2018-19
 
-The mean vaccination rate for MMR among schools (63%) was slightly higher than the overall reported vaccination rate (54%). Among 14 states with average MMR vaccination rates above 90%, Illinois and Pennsylvania reported the two highest rates (97.4%, 96.9%).  Massachusetts reported the lowest mean vaccination rate (57.7%).
+# Average Vaccination Rates Among Reporting Schools
+
+##create new variables excluding negative (-1) vaccination rates for both mmr and overall variables (not reported).
+
+```{r}
+measles_pos <- measles %>% 
+  filter(mmr >= 0, overall >= 0)
+```
+
+```{r}
+measles_mmr_pos <- measles %>% 
+  filter(mmr >= 0)
+```
+
+```{r}
+measles_overall_pos <- measles %>% 
+  filter(overall >= 0)
+```
+
 
 #Mean US Measles Vaccination Rate
 ```{r}
-measles %>% 
-  summarize(mean_mmr_rate = mean(mmr))
+mean_mmr_rate_2 <- measles_mmr_pos %>% 
+  summarize(mean_mmr_rate = mean(mmr)) %>% 
+  pull(mean_mmr_rate) %>% 
+  round()
 ```
+
+```{r}
+mean_mmr_rate_2
+```
+
 #Mean US Vaccination Rate overall
 ```{r}
-measles %>% 
-  summarize(mean_allvax_rate = mean(overall), number_of_responses = n())
+mean_allvax_rate <- measles %>% 
+  summarize(mean_allvax_rate = mean(overall)) %>% 
+  pull(mean_allvax_rate) %>% 
+  round()
 ```
-#Mean Measles Vaccination Rates by State
+
 ```{r}
-measles %>% 
-  group_by(state) %>% 
-  summarize(mean_mmr_rate = mean(mmr))
+mean_allvax_rate_2 <- measles_overall_pos %>% 
+  summarize(mean_allvax_rate = mean(overall)) %>% 
+  pull(mean_allvax_rate) %>% 
+  round()
 ```
-##*Note: figure out what negative vaccination rate means
+
+
+```{r}
+mean_allvax_rate
+```
+The mean vaccination rates among reporting schools was at or near the WHO recommendation of 95% needed to achieve herd immunity. The MMR rate among schools (`r mean_mmr_rate_2`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate_2`%). Among the eight states with average MMR vaccination rates above 95%, Illinois and Massachusetts reported the two highest rates (97.4%, 97.09%).  Arkansas reported the lowest mean vaccination rate (80.5%).
+
+#Mean Measles Vaccination Rates by State (if Reported)
+```{r}
+measles_mmr_pos %>% 
+  group_by(state) %>% 
+  summarize(mean_mmr_rate = mean(mmr)) %>% 
+  arrange(desc(mean_mmr_rate))
+
+```
+
 
 #Mean overall rates by state to see if trends are similar
 ```{r}
-measles %>% 
+measles_overall_pos %>% 
   group_by(state) %>% 
-  summarize(mean_allvax_rate = mean(overall))
+  summarize(mean_allvax_rate = mean(overall)) %>% 
+  arrange(desc(mean_allvax_rate))
 ```
-##*Note: not that helpful to compare to MMR mean rates to overall, since not all states reported the same data...at least not at an exact high and low scale. Graph this later to see where rates are comparable if there appear to be consistent trends (expecting higher MMR than overall based on US average).
+
+Five reporting states showed overall vaccination rates at or above 95% with North Carolina leading (96.83%). California was the only state with sufficient rates for both overall and MMR. 
+
+#---CHALLENGE: Add side-by-side BAR CHARTS for overall vs. mean rates by state; not all states reported both using position = dodge
+
 
 #Save the data frame: Mean MMR Vaccination rate by state
 ```{r}
-mean_mmr_by_state <- measles %>% 
+mean_mmr_by_state <- measles_mmr_pos %>% 
   group_by(state) %>% 
   summarize(mean_mmr_rate = mean(mmr))
 ```
-#Mean Vaccination Rates by State and School Type
 ```{r}
-measles %>% 
-  group_by(state,type) %>% 
-  summarize(mean_mmr_rate = mean(mmr))
+mean_mmr_by_state
 ```
-##*Note: BOCES (Boards of Cooperative Educational Services) is a shared educational service offered in New York.
 
-#US Measles Vaccination Rates by School Type
 
-Mean MMR vaccination rates varied widely by school type. While MA's average vaccination rate was low at 57.7%, its public schools mean rate was 97%, yet 9% among private schools. New York's BOCES (Board of Combined Educational Services) schools reported the highest rates of all school types (98.8%), followed by kindergarten only, public schools, charter and private. Nonpublic types reported the lowest average rate (8.9%).
+#Mean MMR Vaccination Rates by State and School Type
 ```{r}
-measles %>% 
+mean_mmr_by_state_type <- measles_mmr_pos %>% 
+  group_by(state,type) %>% 
+  drop_na(type) %>% 
+  summarize(mean_mmr_rate = mean(mmr)) 
+#%>% 
+  #round(mean_mmr_rate, digits = 1)
+```
+```{r}
+mean_mmr_by_state_type
+```
+
+
+#US Measles Vaccination Rates by School Type Only
+
+Mean MMR vaccination rates varied somewhat by school type. Public schools tended to report the highest mean MMR rates compared to other types, with the exception of New York's BOCES (Boards of Combined Educational Services) schools (similar to public rates). 
+```{r}
+mean_mmr_by_type <- measles_mmr_pos %>% 
   group_by(type) %>% 
   drop_na(type) %>% 
-  summarize(mean_mmr_rate = mean(mmr))
+  summarize(mean_mmr_rate = mean(mmr)) %>% 
+  arrange(mean_mmr_rate)
 ```
-# Exemptions
+```{r}
+mean_mmr_by_type
+```
 
-Among the X schools who reported any type of MMR vaccine exemption (medical, religious or personal), most reported X type exemption. Only 0.2% reported religious exemptions, ...(TBC). Washington is the only state that reported all three types of exemptions (3 personal, 1 religious, 1 medical).
+# Exemptions (Section Needs Reworking)
+
+The most common type of exemption reported by schools was personal, followed by medical. Religious exemptions were only reported by 0.16% of schools. Washington was the only state that reported all three types.
+
 #Figure out what % took any exemption at all
 
 #Percent of All Schools with Religious Exemptions
 ```{r}
 measles %>% 
-  count(xrel) 
-#%>% mutate(n = 100 * n / sum(n))
+  count(xrel) %>% 
+  mutate(n = 100 * n / sum(n))
 ```
 ```{r}
 measles %>% 
   count(xmed) 
 ```
-#Add totals
+
 ```{r}
 measles %>% 
   count(xper)
@@ -152,74 +220,115 @@ use_git()
 #send to github
 use_github(organisation = "rin3-spring-2021", private = TRUE)
 
-# Visualizations Week 4
+# Visualizations 
 
-##Scatterplot of vax rate and personal exemptions
+##Scatterplot of vax rate and personal exemptions. I don't think this dataset has good numeric variables to scatterplot sensibly. 
+
 
 ```{r}
-ggplot(data = measles,
-       mapping = aes(x = mmr, y = xper)) +
-  geom_point()
+  ggplot(data = measles_mmr_pos,
+       mapping = aes(x = mmr, y = xper, color = overall)) +
+  geom_point() +
+  facet_wrap(~type)
 ```
 
-###*Note: This isn't the most sensible graph, but one would expect to see fewer exemptions as vaccination rate (mmr) increases. I wonder what's going on with the 100% mmr line, and I also need to figure out what the -1 rate means (and remove? - same below).
+```{r}
+ggplot(data = measles_overall_pos,
+       mapping = aes(x = enroll, y = overall, color = mmr)) +
+  geom_point() +
+  coord_flip() +
+  facet_wrap(~type)
+```
+
 
 ##Histograms
 
 ```{r}
-ggplot(data = measles,
-       mapping = aes(x = mmr)) +
-  geom_histogram()
+measles_mmr_pos %>% 
+  ggplot(aes(x = mmr)) +
+  geom_histogram(bins = 100)
 ```
-```{r}
-ggplot(data = measles,
-       mapping = aes(x = xper)) +
-  geom_histogram(bins=100)
-```
-###*Note: this might be a negative consequence of not cleaning the dataset yet, but there's one WA school that seems to have 169% personal exemption rate, another that reports 100% mmr vax rate AND 83% personal exemption rate...some wacky things going on.  Ultimately this tells me most of the exemption rates are really really small, with the exception of some outliers. I'd like to know more about the outliers in another type of graph, since those will be the target of interest in future COVID vax efforts. 
 
-#filter WA - I need to look up again how to filter
-```{r}
 
-```
+```{r}
+measles %>% 
+  filter(xper <= 100) %>% 
+  ggplot(aes(x = xper)) +
+  geom_histogram(bins = 100)
+``` 
 
 ##Mean MMR vaccination rates by state (bar) *using new data frame
 
 ```{r}
 mean_mmr_by_state
 ```
+##How can I facet wrap this by type? Try One for each state? I get Label errors.
 ```{r}
 ggplot(data = mean_mmr_by_state,
        mapping = aes(x = mean_mmr_rate, y = state))+
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity") 
 ```
-##Bar Charts v1
+
+
+##Bar Charts v1: Number of Reporting Schools, by Type
 
 ```{r}
-#measles %>% 
- # drop_na(type)
-ggplot(data = measles,
-       mapping = aes(x = type, na.rm = TRUE)) +
-  geom_bar()
-
+measles %>% 
+  drop_na(type) %>% 
+  ggplot(aes(x = type, fill = type)) +
+  geom_bar(show.legend = FALSE) +
+  scale_fill_brewer(palette = "Set3") 
 ```
-###*Note: How do I drop NAs? I tried na.rm = TRUE, and piping drop_na(type) but feel like pipe doesn't work in ggplot?
+
 
 #Bar Chart v2 MMR by school type
 
 ```{r}
-mmr_by_type <- measles %>% 
+mmr_by_type <- measles_mmr_pos %>% 
+  drop_na(type) %>% 
   group_by(type) %>% 
   summarize(mean_mmr = mean(mmr, na.rm = TRUE))
 ```
+
 ```{r}
 mmr_by_type
 ```
+
 ```{r}
-ggplot(data = mmr_by_type,
-       mapping = aes(x = type, y= mean_mmr)) +
-  geom_bar(stat = "identity")
-  
+mean_mmr_by_type <- mmr_by_type %>% 
+  mutate(mmr_type_one_dig = format(round(mean_mmr, 1), nsmall = 1))
 ```
-#Again why are N/As still there?
+
+##When I updated the packages for the exercises in my data viz fundamentals file, suddenly my bars in this measles had a blue outline. How do I get them to match the fill? Do I need a specific theme library installed, like the hrbr one from the exercise? Why is my devtools packate not checked in Rstudio? I'd love more theme options like wsj and economist!
+
+##Also can I facet wrap this by state? I got Layer errors. I couldn't figure out what to test facet wrap this with. 
+
+```{r}
+#install.packages("devtools")
+library(devtools)
+```
+
+
+```{r}
+ggplot(data = mean_mmr_by_type,
+       mapping = aes(x = type, y= mean_mmr, fill = type)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  scale_fill_brewer(palette = "Set3") +
+  geom_text(aes(label = mmr_type_one_dig),
+          vjust = 1.5,
+            show.legend = FALSE,
+            color = "black") +
+  labs(title = "Average MMR Vaccination Rates by School Type",
+       x = "School Type",
+       y = "Average MMR Rate") +
+    theme_classic() 
+
+  
+
+ 
+```
+##Make a graph of mean mmr rates by State, then facet by type?
+
+# States with Vaccination Rates below WHO-recommended 95%
+
 
