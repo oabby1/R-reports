@@ -327,6 +327,14 @@ ggplot(data = mean_mmr_by_type,
 
  
 ```
+
+```{r}
+ggsave(filename = "plots/avg-mmr-by-type.png",
+       height = 5,
+       width = 8,
+       units = "in")
+```
+
 ##Make a graph of mean mmr rates by State, then facet by type?
 
 # States with Vaccination Rates below WHO-recommended 95%
