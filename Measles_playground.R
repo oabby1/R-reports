@@ -1,6 +1,6 @@
 
 
-# -----Load Packages----- ------------------------------------------------
+# -----Load Packages ------------------------------------------------
 
 library(tidyverse)
 library(janitor)
@@ -8,10 +8,10 @@ library(readxl)
 library(skimr)
 library(readr)
 
-# ----download file------ ------------------------------------------------
+# ----Download file ------------------------------------------------
 
-download.file(url = "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-25/measles.csv",
-              destfile = "data-raw-gd/measles.csv")
+#download.file(url = "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-25/measles.csv",
+ #             destfile = "data-raw-gd/measles.csv")
 
 
 # Import Data -------------------------------------------------------------
@@ -23,26 +23,44 @@ View(measles)
 # Clean Data --------------------------------------------------------------
 
 measles_clean_rates <- measles %>% 
-  #Get rid of negative mmr and overall rates (just filtered, but should I replace with NA as commented attempt below? I think there are some other negative values that would be hard to pin down?)
-  filter(mmr >= 0, overall >= 0) %>% 
-  select("state", "type", "mmr", "overall", "enroll") 
-  #mutate(mmr = replace(mmr, -1, values = NA))
+  select(state, name, type, enroll, mmr, overall) %>% 
+  mutate(overall = ifelse(overall < 0, NA, overall)) %>% 
+  mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
+  distinct()
+
+#YEAR OBSERVATION: 484+1515(WI only) schools reported for 2018-19, 567 schools reported for 2017-18, 1567 null (NA). I'm just interested in total rates, and checked that schools didn't report for multiple years, so I'm not going to analyze by year. But if I were, I would need to change null to NA and run into a big bummer/weak analysis.
+#INDEX OBSERVATION: The index ID assigned in the set is by year (and WI has its own), so there are repeats. If I were going to analyze by unique ID, I would need to create a new variable ID. 
 
 measles_exemptions <- measles %>% 
-  #Fix personal exemption rate range to be 0-100 (not 170)
   filter(xper<=100) %>% 
-  select ("state", "xper", "xmed", "xrel") %>% 
-  #Fix exemption columns to be the same type; what about the xrel TRUE response rather than %? TRUE seems to have disappeared)
-   pivot_longer(cols = -state, 
+  select (state, name, type, enroll, xper, xmed, xrel) %>% 
+   pivot_longer(cols = xper:xrel, 
                names_to = "exemption_type",
                values_to = "percent") %>% 
-#rename exemptions in column more clearly
    mutate(exemption_type = case_when(
      exemption_type == "xper" ~ "personal",
-     exemption_type == "xmed" ~ "medical"),
-     exemption_type == "xrel" ~ "religious") %>%
-  #Why isn't this working? Says input 2 must be a vector, not formula object. 
-  group_by(state)
-#I think I should leave the NA percents, as they were not reported (rather than make 0s)
-#With this dataframe, can I add back in the school type column since I pivoted_longer and only kept state? When I tried to keep state and type, it said type was in the way and couldn't be combined. 
+     exemption_type == "xmed" ~ "medical",
+     exemption_type == "xrel" ~ "religious",
+     TRUE ~ exemption_type)) %>%
+  drop_na(percent) %>% 
+       distinct() 
+  
+#Question: I'm converting the % to # students, but before I add the below rounding code, do you think it's a problem that so many numbers are partial, not even close to a whole number? Is it fair to round those then sum and reconvert to %?
+measles_exemptions_number <- measles_exemptions %>% 
+  group_by(state, type, exemption_type) %>% #what is this line actually accomplishing? no changes when I pound it out.
+  mutate(number_of_exempt_students = (percent*enroll)/100) 
+#%>% 
+ # mutate(number_of_exempt_students = round(number_of_exempt_students, digits = 0))
+
+
+#Note: Bummer that so many schools didn't report enrollment, so I can only calculate 4692/7316 numbers. Still, more than half. I wonder if percents will be more meaningful, if I can use ranges maybe (leads to next question)...
+
+#Question: Next step I'm thinking of creating an exemption_ranges variable for later visualization. Can you remind me what package to start with? Need to decide which ranges are meaningful, since most schools have very few exemptions.
+
+
+# Export data to Rds ------------------------------------------------------
+
+write_rds(measles_clean_rates,
+          path = "data/measles-clea-rates.rds")
+
 
