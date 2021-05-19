@@ -6,12 +6,24 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = FALSE,
+                      warning = FALSE)
+                      #,
+                      #fig.width = 10)
 ```
 
+
+```{r}
+theme_ai <- function() {
+   theme_minimal(base_family = "Calibri") +
+  theme(axis.title = element_blank(),
+        plot.title = element_text(face = "bold")) 
+}
+```
 # Introduction
 
-> Could student vaccination rates for Measles, Mumps and Rubella (MMR) possibly predict COVID-19 vaccination rates among children, once a safe child vaccine becomes available?
+> Could student vaccination rates for Measles, Mumps and Rubella (MMR) predict COVID-19 vaccination rates among schools, once a child vaccine becomes available?
 
 Measles is disease that was essentially suppressed for 25 years in the U.S. through vaccination, but **showed a significant resurgence** in 2019.
 
@@ -21,6 +33,12 @@ This report examines data from 32 states and more than 46,000 schools that repor
 library(tidyverse)
 library(janitor)
 library(skimr)
+library(hrbrthemes)
+library(scales)
+library(ggtext)
+library(extrafont)
+library(tigris)
+library(sf)
 ```
 
 #Get the Data
@@ -32,8 +50,6 @@ measles_clean_rates <- read_rds("data-top/measles-clean-rates.rds")
 measles_exemptions <- read_rds("data-top/measles-exemptions.rds")
 ```
 
-#CHARLIE: Will my Rmd to talk to my R script file? Or do I need to read in/create the dataframes I like in both? Or, Carrie showed me the source below code, but I get an error message that refers to an unexpected code on line 149?
-
 
 ```{r}
 #source("Measles_playground.R")
@@ -41,13 +57,13 @@ measles_exemptions <- read_rds("data-top/measles-exemptions.rds")
 
 # About Reporting Schools
 
-46,243 schools from 32 states reported overall and/or MMR vaccination rates for their kindergarten classes in the 2017-2018 or 2018-2019 school years. The large state of CA had the most reporting schools (8,052), and the smallest reporting came from Rhode Island (230 schools). 
+46,243 schools from 32 states reported overall and/or MMR vaccination rates for their kindergarten classes in the 2017-2018 or 2018-2019 school years. CA had the most reporting schools (8,052), and the smallest reporting came from Rhode Island (230 schools). 
 
 The majority of reporting schools represented were public, followed by private and kindergarten only, and then much smaller representation of charter, non-private and BOCES (a New York model called Boards of Cooperative Education Services).
 
 
 ```{r}
-measles_clean_rates %>% 
+school_types <- measles_clean_rates %>% 
   count(type) %>% 
   drop_na(type) %>% 
   arrange(desc(n)) 
@@ -56,17 +72,34 @@ measles_clean_rates %>%
 ##Number of Reporting Schools, by Type
 
 ```{r}
-measles_clean_rates %>% 
-  drop_na(type) %>% 
-  ggplot(aes(x = type, fill = type)) +
-  geom_bar(show.legend = FALSE) +
-  scale_fill_brewer(palette = "Set3")
+school_types %>% 
+  ggplot(aes(n, type, fill = type)) +
+  geom_col(show.legend = FALSE)+
+   coord_flip()+
+  geom_text(aes(label = n),
+            vjust = -0.5,
+            family = "Calibri",
+            color = "black",
+            size = 3,
+            show.legend = FALSE,
+            color = "black") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Number of Reporting Schools, by Type",
+       x = "Type",
+       y = "Number") +
+  theme(axis.title = element_blank()) +
+  theme_ai()
 ```
+
 ##Distribution of schools enrollment
 ```{r}
 measles_clean_rates %>% 
   ggplot(aes(x = enroll)) +
-  geom_histogram(bins = 150)
+  geom_histogram(bins = 150) +
+labs(title = "Most schools' enrollment numbers were small",
+       x = "Number of Students Enrolled",
+       y = "Number of Schools") +
+theme_ai()
 ```
 
 
@@ -75,67 +108,120 @@ Most individual schools reported MMR vaccination rates well above 75%, while ove
 ```{r}
 measles_clean_rates %>% 
   ggplot(aes(x = mmr)) +
-  geom_histogram(bins = 100)
+  geom_histogram(bins = 100) +
+  labs(title = "Most schools' MMR vaccination rates were very high",
+       x = "MMR Vaccination Rate",
+       y = "Number of Schools")+
+  theme_ai()
 ```
-##Abby to combine side by side histograms (mmr + overall) histogram. dodge? Add titles etc.
+##Abby to combine side by side histograms (mmr + overall) histogram. dodge? 
 ```{r}
 measles_clean_rates %>% 
   ggplot(aes(x = overall)) +
-  geom_histogram(bins = 100)
+  geom_histogram(bins = 100) +
+    labs(title = "Schools' overall vaccination rates were mostly high",
+       x = "Overall Vaccination Rate",
+       y = "Number of Schools")+
+  theme_ai()
 ```
 
 ##Mean U.S. Vaccination Rates 
 ```{r}
-mean_mmr_rate <- measles_clean_rates %>% 
+mean_mmr_rate_US <- measles_clean_rates %>% 
   summarize(mean_mmr_rate = mean(mmr, na.rm = TRUE))  %>% 
    pull(mean_mmr_rate) %>% 
    round()
 ```
 
 ```{r}
-mean_allvax_rate <- measles_clean_rates %>% 
+mean_allvax_rate_US <- measles_clean_rates %>% 
   summarize(mean_allvax_rate = mean(overall, na.rm = TRUE)) %>% 
   pull(mean_allvax_rate) %>% 
   round()
 ```
 
-The mean vaccination rates among reporting schools was slightly below the WHO recommended goal of 95% needed to achieve herd immunity. The average MMR rate among reporting schools (`r mean_mmr_rate`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate`%). 
+The mean vaccination rates among reporting schools was slightly below the **WHO recommended goal of 95% needed to achieve herd immunity.** The average MMR rate among reporting schools (`r mean_mmr_rate_US`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate_US`%). 
 
-Among the 21 states that reported MMR rates, eight states had average MMR vaccination rates above 95%.  Illinois and Massachusetts reported the two highest rates (97.1%, 96.9%).  Arkansas reported the lowest mean vaccination rate (80.5%). 
+Among the 21 states that reported MMR rates, eight states had average MMR vaccination rates above 95%.  Illinois and Massachusetts reported the two highest rates (97.1%, 96.9%).  Arkansas reported the lowest mean vaccination rate (80.5%), followed by Washingon (89.3%). 
 
-Among the 17 states that reported overall vaccination rates, five showed overall vaccination rates at or above 95% with North Carolina leading (96.83%), followed by Iowa (95.8%). Idaho's rate was lowest at 82.4%. California was the only state with sufficient rates for both overall and MMR rates. 
+Among the 17 states that reported overall vaccination rates, five showed overall vaccination rates at or above 95%, with North Carolina leading (96.83%), followed by Iowa (95.8%). Idaho's rate was lowest at 82.4%. California was the only state with sufficient WHO-recommended mean rates for both overall and MMR rates. 
 
 ```{r}
 mean_mmr_state <- measles_clean_rates %>% 
   group_by(state) %>% 
   summarize(mean_mmr_rate = mean(mmr, na.rm = TRUE)) %>% 
-  drop_na() %>% 
-  arrange(desc(mean_mmr_rate))
+  drop_na() 
+#%>% 
+  #arrange(desc(mean_mmr_rate))
 ```
 
 ```{r}
 mean_mmr_by_state_type <- measles_clean_rates %>% 
   group_by(state,type) %>% 
   drop_na(type) %>% 
-  summarize(mean_mmr_rate = mean(mmr, na.rm = TRUE)) 
+  summarize(mean_mmr_rate = mean(mmr, na.rm = TRUE))
 #%>% 
   #round(mean_mmr_rate, digits = 1)
 ```
 ##Mean MMR Vaccination Rates, by state
 
-#CHARLIE: Can I plot a vertical mean MMR rate line, among all states (mean_mmr_rate, already a single number) to overlay on this bar graph? I'll do the same for the overall rate graph below
+#CHARLIE: 1. when I calculated my mean_mmr_rate_US value (pulled, above), it rounded to 95. Is your 94 mean calculation within, below, perhaps not rounded? What is the $ accomplishing below? Aiming for the most accurate rate, and consistency throughout the report. 2. Is there an easy way to add % to the x axis, or do I need to go back to the dataframe and mutate a percent display variable? Or I could just unhide the x axis label. What is your recommendation?
+
 ```{r}
 ggplot(data = mean_mmr_state,
-       mapping = aes(x = mean_mmr_rate, y = state))+
-  geom_bar(stat = "identity")
+       mapping = aes(x = mean_mmr_rate, y = state)) +
+  geom_bar(stat = "identity", show.legend = FALSE, fill = "lightgray") +
+  scale_fill_brewer(palette = "Accent") +
+  geom_vline(xintercept = mean(mean_mmr_state$mean_mmr_rate),
+          linetype = "dashed") +
+   annotate("text",
+           x = mean(mean_mmr_state$mean_mmr_rate) + 4,
+           y = nrow(mean_mmr_state) / 2,
+           colour = "black",
+           label = paste0("Mean U.S. Rate (", round(mean(mean_mmr_state$mean_mmr_rate)), ")"),
+           angle = 90) +
+  labs(title = "Average MMR vaccination rates across U.S. states",
+       x = "Percent",
+       y = "State") +
+  theme(axis.title.y = element_blank()) +
+  scale_x_continuous(breaks = c(0,10,20,30,40,50,60,70,80,90,100))+
+  theme_ai()
+       
 ```
 
 ##Mean Overall Vax rates, by state 
+
+```{r}
+mean_overall_state <- measles_clean_rates %>% 
+  group_by(state) %>% 
+  summarize(mean_allvax_rate = mean(overall, na.rm = TRUE)) %>% 
+  drop_na() %>% 
+  arrange(desc(mean_allvax_rate))
+```
+
+#CHARLIE: same here as above: the mean_allvax_rate_US value I calculated and rounded is 93. Below is 92. 
+
 ```{r}
 ggplot(data = mean_overall_state,
        mapping = aes(x = mean_allvax_rate, y = state))+
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity", fill = "lightgray") +
+  geom_vline(xintercept = mean(mean_overall_state$mean_allvax_rate),
+          linetype = "dotted") +
+  annotate("text",
+           x = mean(mean_overall_state$mean_allvax_rate) + 3,
+           y = nrow(mean_overall_state) / 2,
+           colour = "black",
+           label = paste0("Mean U.S. Rate (", round(mean(mean_overall_state$mean_allvax_rate)), ")"),
+           angle = 90) +
+  labs(title = "Average OVERALL vaccination rates across U.S. states",
+       x = "Percent",
+       y = "State") +
+  theme_ai () +
+  theme(axis.title.y = element_blank()) +
+   scale_x_continuous(breaks = c(0,10,20,30,40,50,60,70,80,90,100))
+  
 ```
+
 
 ##Mean MMR and Overall Rates, by School Type
 Mean MMR vaccination rates varied somewhat by school type. BOCES schools in NY reported the highest mean MMR rates, followed closely by public schools (both above 95%). Charter schools averaged the lowest MMR rate (just below 90%). 
@@ -160,9 +246,9 @@ mean_overall_by_type <- measles_clean_rates %>%
 
 ```{r}
 mean_mmr_by_type %>% 
-  left_join(mean_overall_by_type) %>% 
-  knitr::kable()
+  left_join(mean_overall_by_type) 
 ```
+#CHARLIE: below: 1. Can you give me a hint to reorder the X axis from high rate to low? I tried x = reorder(type, mmr_type_one_dig) but that relabeled my x axis, and ordered from lowest to highest. Do I need to mutate to a factor? Or do I need to assign the one_dig character variable to a numeric? 
 
 ##Mean MMR Rates, by School Type
 ```{r}
@@ -175,25 +261,101 @@ ggplot(data = mean_mmr_by_type_1,
   scale_fill_brewer(palette = "Set3") +
   geom_text(aes(label = mmr_type_one_dig),
             vjust = 1.5,
+            family = "Calibri",
+            size = 3.5,
             show.legend = FALSE,
             color = "black") +
-  labs(title = "Average MMR Vaccination Rates by School Type",
+  labs(title = "NY's BOCES schools had the highest average MMR vaccination rate (percent)",
        x = "School Type",
        y = "Average MMR Rate") +
-  theme_classic()
+  theme_ai() +
+  theme(axis.title = element_blank())
 ```
 
 # Exemptions (TBD)
 
-The most common type of exemption reported by schools was personal (6312), followed by medical (1003). Religious exemptions were only reported by 109 (0.002%) schools. Washington was the only state that reported all three types.
+The most common type of exemption reported by schools was personal (6,312), followed by medical (1,003). Religious exemptions were only reported by 109 (0.002%) schools. Washington was the only state that reported all three exemption types.
+
+#CHARLIE: I couldn't get the ranges to include a percent sign, so I had to keep the y axis label. Is it possible to add % character to a character range label? The % also messed up my order and put 11-25 as the lowest bar. 
+```{r}
+measles_exemptions %>%   
+  count(state, exempt_ranges) %>% 
+  drop_na(exempt_ranges) %>% 
+  mutate(exempt_ranges = fct_relevel(exempt_ranges, c("Less than 1", "2 to 5", "6 to 10", "11 to 25", "26 to 50", "More than 50"))) %>% 
+  ggplot(aes(x = n,
+         y = exempt_ranges,
+         fill = state)) +
+  geom_col(show.legend = TRUE) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Most states reported fewer than 5 percent exemptions\n(medical or personal)",
+       x = "Number of Schools",
+       y = "Ranges by Percent") +
+  theme_minimal(base_family = "Calibri") +
+  theme(axis.title.x = element_blank())
+```
+#CHARLIE:  What's happening at the bottom here? There's no axis scale, so I am thinking adding % labels, or numbers of students/exemptions for each state
+```{r}
+ggplot(data = measles_exemptions, 
+       mapping = aes(x = state, 
+                     y = exemption_type,
+                     fill = state)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~exemption_type) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "States reported more personal exemptions than medical exemptions",
+       x = "Type of Exemption",
+       y = "State") +
+  theme_ai()
+```
 
 
 
+# Individial State Analyses: Low MMR Vaccination Rates
+
+Arkansas and Washington reported the two lowest MMR vaccination rates (both below 90%). Only 2 Arkansas schools (0.4%) reported MMR vaccination rates above 95%.  As a state, Arkansas did not provide any exemption data, so it is difficult to determine how exemptions may have played a role in its low mean MMR rate.  
+
+While Wisconsin reported the highest number of exemptions, it did not report MMR vaccination rates, only overall vaccination rates, which were well below the U.S. average. The relationship between exemptions and low vaccination rates deserves further investigation when more complete data is available.
+
+WA reported a high number of exemptions compared to other states and the second lowest mean MMR vaccination rate. The majority of schools have not reached the recommended 95% MMR vaccination rate. 
+
+#CHARLIE: WOW what is happening here when I knit?
 
 
-# States of Interest
+```{r}
+clean_schools_mapping <- measles_clean_rates %>% 
+  drop_na(lat,lng) %>% 
+  mutate(lat_from_lng = lng,
+         long_from_lat = lat) %>% 
+  st_as_sf(coords = c("lat_from_lng", "long_from_lat"), crs = 4326) 
 
-States with the lowest rates of MMR vaccinations 
+```
+
+
+```{r}
+
+counties_sf <- counties()
+
+wa_counties_sf <- counties_sf %>% 
+  filter(STATEFP == 53)
+
+wa_schools <- clean_schools_mapping %>% 
+  filter(mmr < 95) %>% 
+  filter(state == "Washington") %>% 
+  rename(latitude = lng,
+         longitude = lat) %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+
+ggplot() +
+  geom_sf(data = wa_schools) +
+  geom_sf(data = wa_counties_sf, alpha = 0) +
+  labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+       x = "long",
+       y = "lat") +
+  theme_ai()
+```
+
 
 # Conclusions
 
