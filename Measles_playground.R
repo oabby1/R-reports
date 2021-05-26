@@ -7,6 +7,10 @@ library(janitor)
 library(readxl)
 library(skimr)
 library(readr)
+library(sf)
+library(tigris)
+#library(mapview)
+
 
 # ----Download file ------------------------------------------------
 
@@ -22,14 +26,28 @@ View(measles)
 
 #Take out negative rates, replace with NA
 measles_clean_rates <- measles %>% 
+  select(state, name, type, enroll, mmr, overall, lng, lat) %>% 
+  mutate(overall = ifelse(overall < 0, NA, overall)) %>% 
+  mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
+  distinct()
+
+#CHARLIE here is the new dataframe to use for rejoining lat/lng later (43,233 rows);
+#I took out negative mmr rates and replace w NA, took out lat/lng, removed duplicates
+measles_clean_rates_2 <- measles %>% 
   select(state, name, type, enroll, mmr, overall) %>% 
   mutate(overall = ifelse(overall < 0, NA, overall)) %>% 
   mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
   distinct()
 
+#CHARLIE HELP here: how to add lat/long back in to just these 43,233 rows? below gives me 64426. Then I'll rename as measles_clean_rates so it updates all my other analyses. 
+measles_clean_rates_2 %>% 
+  left_join(clean_schools_mapping)
+
+
+______
+
 #Not going to analyze by year: 484+1515(WI only) schools reported for 2018-19, 567 schools reported for 2017-18, 1567 null (NA). 
 #The index ID assigned is not unique. Ignoring. Not interested by school. 
-
  
 #there are 109 religious exemptions, but as character (TRUE) in the dataset, not numeric. cannot be summarized with other exemptions!!
 measles %>% 
@@ -56,10 +74,11 @@ measles_exemptions <- measles %>%
      exemption_type == "xmed" ~ "medical",
      TRUE ~ exemption_type)) %>%
   mutate(exempt_ranges = case_when(
-    percent < 5 ~ "Less than 5",
-    percent < 10 ~ "5 to 10",
-    percent < 25 ~ "10 to 25",
-    percent < 50 ~ "25 to 50",
+    percent < 1 ~ "Less than 1",
+    percent < 5 ~ "2 to 5",
+    percent < 10 ~ "6 to 10",
+    percent < 25 ~ "11 to 25",
+    percent < 50 ~ "26 to 50",
     percent > 50 ~ "More than 50")) %>% 
   drop_na(percent) %>% 
        distinct()
@@ -150,24 +169,42 @@ mean_overall_by_type <- measles_clean_rates %>%
 mean_mmr_by_type %>% 
   left_join(mean_overall_by_type)
 
+#plot mean US rate vline and label: USE IN RMD
+ggplot(data = mean_mmr_state,
+       mapping = aes(x = mean_mmr_rate, y = state))+
+  geom_bar(stat = "identity") +
+  geom_vline(xintercept = mean(mean_mmr_state$mean_mmr_rate),
+             linetype = "dashed") +
+  annotate("text",
+           x = mean(mean_mmr_state$mean_mmr_rate) + 5,
+           y = nrow(mean_mmr_state) / 2,
+           colour = "black",
+           label = paste0("Mean Rate (", round(mean(mean_mmr_state$mean_mmr_rate)), ")"),
+           angle = 90)
+
+
 # Exemptions --------------------------------------------------------------
 
 
-#plot exemption ranges
+#plot exemption ranges: *USE IN RMD*
 measles_exemptions %>%   
   count(state, exempt_ranges) %>% 
   drop_na(exempt_ranges) %>% 
+  mutate(exempt_ranges = fct_relevel(exempt_ranges, c("Less than 1", "2 to 5", "6 to 10", "11 to 25", "26 to 50", "More than 50"))) %>% 
   ggplot(aes(x = n,
          y = exempt_ranges,
          fill = state)) +
   geom_col(show.legend = TRUE) +
   scale_fill_brewer(palette = "Set3") +
   labs(title = "Percent of Personal or Medical Vaccine Exemptions, by State",
-       x = "Number",
+       x = "Number of Schools",
        y = "Ranges by Percent") +
-  theme_classic()
+  theme_ai() 
+  
 
-#Percent of All Schools with personal Exemptions = 6312, medical 1003 (rel 109)
+#REORDER Y scale
+
+# All Schools with personal Exemptions = 6312, medical 1003 (rel 109, or 0.23%)
 
 measles_exemptions %>% 
   count(exemption_type == "personal") 
@@ -184,7 +221,7 @@ measles_exemptions %>%
  # mutate(n = 100 * n / sum(n))
 
 
-#Percent of Exemptions by State and School Type 
+#Percent of MMR Exemptions by State and School Type 
 
 measles_exemptions %>% 
   group_by(state) %>% 
@@ -193,15 +230,64 @@ measles_exemptions %>%
 
 #Exemptions by State 
 
+measles_exemptions %>% 
+  group_by(state) %>% 
+  count(state, exemption_type) 
 
+#plot personal exemptions
+
+ggplot(data = measles_exemptions, 
+       mapping = aes(x = state, 
+                     y = exemption_type,
+                     fill = state)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~exemption_type) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Set3")
+#fix!!
   
 
+# Low Rate State Analyses ----------------------------------------------------------
 
-#State analyses
-# Arrange state MMR rates from low to high
+# Arrange state MMR rates from low to high (focus below 90%)
+mean_mmr_state %>% 
+  arrange(mean_mmr_rate)
+
+# Look at rates in WA (no enrollment data)
+
+WA_clean_rates <- measles %>% 
+  filter(state == "Washington") %>% 
+  select(state, name, county, type, mmr, overall) %>% 
+  mutate(mmr = ifelse(overall < 0, NA, overall)) %>% 
+  mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
+  distinct()
+
+#mmr rate by county
 
 
-# visualizations extra ----------------------------------------------------
+
+WA_exempt <- measles_exemptions %>% 
+  filter(state == "Washington")
+
+
+# Rates in AR: Lowest MMR average. Arkansas isn't in the exemptions dataframe? No exemptions or overall rates. 
+AR_clean_rates <- measles %>% 
+  filter(state == "Arkansas") %>% 
+  select(state, name, county, type, enroll, mmr) %>% 
+  mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
+  distinct()
+
+#histogram mmr rates
+AR_clean_rates %>%  
+  ggplot(aes(x = mmr)) +
+  geom_histogram(bins = 100)
+
+AR_clean_rates %>%  
+  ggplot(aes(x = enroll)) +
+  geom_histogram(bins = 100)
+
+
+# Visualizations extra ----------------------------------------------------
 
 ##Scatterplot of vax rate and enroll. Need to make new dataframe with exempt if wanted.
 
@@ -247,27 +333,157 @@ ggplot(data = mean_mmr_by_type_1,
   labs(title = "Average MMR Vaccination Rates by School Type",
        x = "School Type",
        y = "Average MMR Rate") +
-  theme_classic()
+  theme_ai()
 
 
-# States with Vaccination Rates below 90%
-#Arkansas isn't in the exemptions dataframe? Low rates and no exemptions?
+# Mapping clean schools
 
-# Washington
-measles_clean_rates %>% 
-  filter(state == "Washington") 
- 
+counties_sf <- counties()
+
+clean_schools_mapping <- measles_clean_rates %>% 
+  drop_na(lat,lng) %>% 
+  mutate(lat_from_lng = lng,
+         long_from_lat = lat) %>% 
+  st_as_sf(coords = c("lat_from_lng", "long_from_lat"), crs = 4326) 
+
+
+#The columns needs to be swapped around:
+
+clean_schools_mapping %>% 
+  rename(latitude = lng,
+         longitude = lat) %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) %>% 
+  ggplot() +
+  geom_sf()
   
+# Mapping schools with MMR rates < 95%
 
+clean_schools_mapping %>% 
+  filter(mmr < 95) %>% 
+  rename(latitude = lng,
+         longitude = lat) %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) %>% 
+  ggplot() +
+  geom_sf() 
+  
+# Map WA state schools < 95% MMR
+
+washington_sf <- states() %>% 
+  filter(NAME == "Washington")
+
+wa_counties_sf <- counties_sf %>% 
+  filter(STATEFP == 53)
+
+wa_schools <- clean_schools_mapping %>% 
+  filter(mmr < 95) %>% 
+  filter(state == "Washington") %>% 
+  rename(latitude = lng,
+         longitude = lat) %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+
+#switch the geom_sf layers if removing alpha for color and fill preferences
+ggplot() +
+  geom_sf(data = wa_schools) +
+  geom_sf(data = washington_sf, alpha = 0) +
+  labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+       x = "long",
+       y = "lat") +
+  theme_minimal() +
+  theme(axis.title = element_blank())
+
+wa_schools <- clean_schools_mapping %>% 
+  filter(mmr < 95) %>% 
+  filter(state == "Washington") %>% 
+  distinct() %>% 
+  rename(latitude = lng,
+         longitude = lat) %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+ggplot() +
+  geom_sf(data = wa_schools) +
+  geom_sf(data = wa_counties_sf, alpha = 0) +
+  labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+       family = "Calibri",
+       x = "long",
+       y = "lat") +
+  theme_void(base_family = "Calibri") +
+  theme(plot.title = element_text(face = "bold"))
+
+#add county layers
+ggplot() +
+  geom_sf(data = wa_schools) +
+  geom_sf(data = wa_counties_sf, alpha = 0) +
+  labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+       x = "long",
+       y = "lat") +
+  theme_ai()
+
+  
+measles_clean_rates %>% 
+  filter(state == "Washington") %>% 
+  filter(mmr < 95)
+
+1332/2203
+
+
+#Map AR few schools (7%) reported > 95% MMR
+ar_schools_yay <- clean_schools_mapping %>% 
+  filter(mmr > 95) %>% 
+  filter(state == "Arkansas") %>% 
+  rename(latitude = lng,
+         longitude = lat) %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+
+
+
+ggplot() +
+  geom_sf(data = ar_schools_yay) +
+  geom_sf(data = arkansas_sf, alpha = 0) +
+  labs(title = "Only 2 Arkansas schools had MMR vaccination rates ABOVE 95 percent",
+       x = "long",
+       y = "lat") +
+  theme_ai()
+
+#AR schools below 95
+ar_schools_nay <- clean_schools_mapping %>% 
+  filter(mmr < 95) %>% 
+  filter(state == "Arkansas") %>% 
+  rename(latitude = lng,
+         longitude = lat) %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+
+ggplot() +
+  geom_sf(data = ar_schools_nay) +
+  geom_sf(data = arkansas_sf, alpha = 0) +
+  labs(title = "99.6% of Arkansas schools had MMR vaccination rates below 95 percent",
+       x = "long",
+       y = "lat") +
+  theme_minimal() +
+  theme(axis.title = element_blank())
+
+arkansas_sf <- states() %>% 
+  filter(NAME == "Arkansas")
+
+measles_clean_rates %>% 
+  filter(state == "Arkansas") %>% 
+  filter(mmr < 95)
+
+555/557
+2/557
 # Code for saving plots? --------------------------------------------------
 
 #install.packages("devtools")
-library(devtools)
+#library(devtools)
 
-ggsave(filename = "plots/avg-mmr-by-type.png",
-       height = 5,
-       width = 8,
-       units = "in")
+#ggsave(filename = "plots/avg-mmr-by-type.png",
+ #      height = 5,
+  #     width = 8,
+   #    units = "in")
 
 
 

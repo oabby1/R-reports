@@ -2,15 +2,17 @@
 title: "Who's Getting Vaccinated for Measles in U.S. Schools?"
 author: "*Abby Isaacson*"
 date: "3/22/2021"
-output: html_document
+output: 
+  html_document:
+    df_print: kable
+    toc: TRUE
+    
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, 
                       message = FALSE,
                       warning = FALSE)
-                      #,
-                      #fig.width = 10)
 ```
 
 
@@ -27,7 +29,7 @@ theme_ai <- function() {
 
 Measles is disease that was essentially suppressed for 25 years in the U.S. through vaccination, but **showed a significant resurgence** in 2019.
 
-This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarteners between 2017 and 2019. By looking at how many students have been abiding by state vaccine recommendations for MMR, public health organizations and schools may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
+This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019. By looking at how many students have been abiding by state vaccine recommendations for MMR, public health organizations and schools may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
 
 ```{r}
 library(tidyverse)
@@ -39,9 +41,10 @@ library(ggtext)
 library(extrafont)
 library(tigris)
 library(sf)
+library(gridExtra)
+library(gt)
 ```
 
-#Get the Data
 ```{r}
 #measles <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/da#ta/2020/2020-02-25/measles.csv')
 
@@ -51,15 +54,11 @@ measles_exemptions <- read_rds("data-top/measles-exemptions.rds")
 ```
 
 
-```{r}
-#source("Measles_playground.R")
-```
-
 # About Reporting Schools
 
-46,243 schools from 32 states reported overall and/or MMR vaccination rates for their kindergarten classes in the 2017-2018 or 2018-2019 school years. CA had the most reporting schools (8,052), and the smallest reporting came from Rhode Island (230 schools). 
+46,243 schools from 32 states reported overall and/or MMR vaccination rates for their kindergarten classes in the 2017-2018 or 2018-2019 school years. California had the most reporting schools (8,052), and the smallest reporting came from Rhode Island (230 schools). 
 
-The majority of reporting schools represented were public, followed by private and kindergarten only, and then much smaller representation of charter, non-private and BOCES (a New York model called Boards of Cooperative Education Services).
+The majority of reporting schools represented were public, followed by private and kindergarten only, and then much smaller representation of charter, non-private and [BOCES](https://www.boces.org) (a New York model called Boards of Cooperative Education Services).
 
 
 ```{r}
@@ -69,20 +68,18 @@ school_types <- measles_clean_rates %>%
   arrange(desc(n)) 
 ```
 
-##Number of Reporting Schools, by Type
 
-```{r}
+```{r, fig.width=9}
 school_types %>% 
-  ggplot(aes(n, type, fill = type)) +
+  ggplot(aes(type, n, fill = type)) +
   geom_col(show.legend = FALSE)+
    coord_flip()+
   geom_text(aes(label = n),
-            vjust = -0.5,
+            hjust = -0.25,
             family = "Calibri",
             color = "black",
             size = 3,
-            show.legend = FALSE,
-            color = "black") +
+            show.legend = FALSE) +
   scale_fill_brewer(palette = "Set3") +
   labs(title = "Number of Reporting Schools, by Type",
        x = "Type",
@@ -91,8 +88,9 @@ school_types %>%
   theme_ai()
 ```
 
-##Distribution of schools enrollment
-```{r}
+Most reporting schools' enrollment numbers were below 500 for elementary/kindergarten classes. 
+#add frequencies
+```{r, fig.height=5}
 measles_clean_rates %>% 
   ggplot(aes(x = enroll)) +
   geom_histogram(bins = 150) +
@@ -100,32 +98,39 @@ labs(title = "Most schools' enrollment numbers were small",
        x = "Number of Students Enrolled",
        y = "Number of Schools") +
 theme_ai()
+
 ```
 
 
 # Vaccination Rates Among Reporting Schools
-Most individual schools reported MMR vaccination rates well above 75%, while overall vaccination rates were just slightly lower and more unevenly distributed:
+Most individual schools reported MMR vaccination rates above 90%, while overall vaccination rates were slightly lower and more unevenly distributed:
+
 ```{r}
 measles_clean_rates %>% 
   ggplot(aes(x = mmr)) +
   geom_histogram(bins = 100) +
-  labs(title = "Most schools' MMR vaccination rates were very high",
+  scale_x_continuous(labels = percent_format(scale = 1)) +
+  labs(title = "Schools' MMR vaccination rates were slightly higher than the overall rates",
        x = "MMR Vaccination Rate",
        y = "Number of Schools")+
-  theme_ai()
+  theme_ai() -> p1
 ```
-##Abby to combine side by side histograms (mmr + overall) histogram. dodge? 
-```{r}
+
+
+```{r, fig.width=8}
 measles_clean_rates %>% 
   ggplot(aes(x = overall)) +
   geom_histogram(bins = 100) +
-    labs(title = "Schools' overall vaccination rates were mostly high",
-       x = "Overall Vaccination Rate",
-       y = "Number of Schools")+
-  theme_ai()
+  scale_x_continuous(labels = percent_format(scale = 1)) +
+  #labs(title = "Schools' overall vaccination rates\nwere mostly high",
+   #    x = "Overall Vaccination Rate",
+    #   y = "Number of Schools")+
+  theme_ai() -> p2
+
+grid.arrange(p1, p2, ncol = 2)
 ```
 
-##Mean U.S. Vaccination Rates 
+
 ```{r}
 mean_mmr_rate_US <- measles_clean_rates %>% 
   summarize(mean_mmr_rate = mean(mmr, na.rm = TRUE))  %>% 
@@ -140,19 +145,18 @@ mean_allvax_rate_US <- measles_clean_rates %>%
   round()
 ```
 
-The mean vaccination rates among reporting schools was slightly below the **WHO recommended goal of 95% needed to achieve herd immunity.** The average MMR rate among reporting schools (`r mean_mmr_rate_US`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate_US`%). 
+The mean vaccination rate among reporting schools was slightly below the *[WHO recommended goal of 95% needed to achieve herd immunity](https://www.who.int/news-room/q-a-detail/herd-immunity-lockdowns-and-covid-19).* The average MMR rate among all reporting schools (`r mean_mmr_rate_US`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate_US`%). One might expect overall vaccination rates to be slightly lower on average, since MMR has one of the highest WHO-recommended vaccination rates for reaching herd immunity compared to other diseases. 
 
-Among the 21 states that reported MMR rates, eight states had average MMR vaccination rates above 95%.  Illinois and Massachusetts reported the two highest rates (97.1%, 96.9%).  Arkansas reported the lowest mean vaccination rate (80.5%), followed by Washingon (89.3%). 
+Among the 21 states that reported MMR rates, **eight states had average MMR vaccination rates above 95%**.  Illinois and Massachusetts reported the two highest rates (97.1%, 96.9%).  Arkansas reported the lowest mean vaccination rate (80.5%), followed by Washington (89.3%). 
 
-Among the 17 states that reported overall vaccination rates, five showed overall vaccination rates at or above 95%, with North Carolina leading (96.83%), followed by Iowa (95.8%). Idaho's rate was lowest at 82.4%. California was the only state with sufficient WHO-recommended mean rates for both overall and MMR rates. 
+Among the 17 states that reported overall vaccination rates, North Carolina (96.83%) and Iowa (95.8%) reported the highest. Idaho's rate was lowest at 82.4%, which is still higher than the lowest mean MMR rate.
 
 ```{r}
 mean_mmr_state <- measles_clean_rates %>% 
   group_by(state) %>% 
   summarize(mean_mmr_rate = mean(mmr, na.rm = TRUE)) %>% 
   drop_na() 
-#%>% 
-  #arrange(desc(mean_mmr_rate))
+
 ```
 
 ```{r}
@@ -163,9 +167,8 @@ mean_mmr_by_state_type <- measles_clean_rates %>%
 #%>% 
   #round(mean_mmr_rate, digits = 1)
 ```
-##Mean MMR Vaccination Rates, by state
 
-#CHARLIE: 1. when I calculated my mean_mmr_rate_US value (pulled, above), it rounded to 95. Is your 94 mean calculation within, below, perhaps not rounded? What is the $ accomplishing below? Aiming for the most accurate rate, and consistency throughout the report. 2. Is there an easy way to add % to the x axis, or do I need to go back to the dataframe and mutate a percent display variable? Or I could just unhide the x axis label. What is your recommendation?
+
 
 ```{r}
 ggplot(data = mean_mmr_state,
@@ -184,12 +187,13 @@ ggplot(data = mean_mmr_state,
        x = "Percent",
        y = "State") +
   theme(axis.title.y = element_blank()) +
-  scale_x_continuous(breaks = c(0,10,20,30,40,50,60,70,80,90,100))+
+  scale_x_continuous(breaks = c(0,10,20,30,40,50,60,70,80,90,100),
+                     labels = scales::percent_format(scale = 1)) +
   theme_ai()
        
 ```
 
-##Mean Overall Vax rates, by state 
+
 
 ```{r}
 mean_overall_state <- measles_clean_rates %>% 
@@ -199,7 +203,6 @@ mean_overall_state <- measles_clean_rates %>%
   arrange(desc(mean_allvax_rate))
 ```
 
-#CHARLIE: same here as above: the mean_allvax_rate_US value I calculated and rounded is 93. Below is 92. 
 
 ```{r}
 ggplot(data = mean_overall_state,
@@ -218,13 +221,14 @@ ggplot(data = mean_overall_state,
        y = "State") +
   theme_ai () +
   theme(axis.title.y = element_blank()) +
-   scale_x_continuous(breaks = c(0,10,20,30,40,50,60,70,80,90,100))
+   scale_x_continuous(breaks = c(0,10,20,30,40,50,60,70,80,90,100),
+                      labels = scales::percent_format(scale = 1))
   
 ```
 
 
-##Mean MMR and Overall Rates, by School Type
-Mean MMR vaccination rates varied somewhat by school type. BOCES schools in NY reported the highest mean MMR rates, followed closely by public schools (both above 95%). Charter schools averaged the lowest MMR rate (just below 90%). 
+
+Mean MMR vaccination rates varied somewhat by *school type*. BOCES schools in NY reported the highest mean MMR rates, followed closely by public schools (both above 95%). Charter schools averaged the lowest MMR rate (just below 90%). 
 
 Not all school types reported overall vaccination rates, which were lower than MMR rates among types that did report (between 88-93%).
 ```{r}
@@ -245,86 +249,125 @@ mean_overall_by_type <- measles_clean_rates %>%
 
 
 ```{r}
-mean_mmr_by_type %>% 
-  left_join(mean_overall_by_type) 
+# mean_mmr_by_type %>% 
+#   left_join(mean_overall_by_type) 
 ```
-#CHARLIE: below: 1. Can you give me a hint to reorder the X axis from high rate to low? I tried x = reorder(type, mmr_type_one_dig) but that relabeled my x axis, and ordered from lowest to highest. Do I need to mutate to a factor? Or do I need to assign the one_dig character variable to a numeric? 
 
-##Mean MMR Rates, by School Type
+
 ```{r}
 mean_mmr_by_type_1 <- mean_mmr_by_type %>% 
    mutate(mmr_type_one_dig = format(round(mean_mmr_rate, 1), nsmall = 1))
 
-ggplot(data = mean_mmr_by_type_1,
-       mapping = aes(x = type, y= mean_mmr_rate, fill = type)) +
+mean_mmr_by_type_1 %>% 
+  mutate(type = fct_reorder(type, mean_mmr_rate)) %>% 
+  ggplot(mapping = aes(x = mean_mmr_rate, y= type, fill = type)) +
   geom_bar(stat = "identity", show.legend = FALSE) +
   scale_fill_brewer(palette = "Set3") +
+  scale_x_continuous(labels = percent_format(scale = 1)) +
   geom_text(aes(label = mmr_type_one_dig),
-            vjust = 1.5,
+            hjust = 1.5,
             family = "Calibri",
             size = 3.5,
             show.legend = FALSE,
             color = "black") +
-  labs(title = "NY's BOCES schools had the highest average MMR vaccination rate (percent)",
+  labs(title = "NY's BOCES schools had the highest average MMR vaccination rate",
        x = "School Type",
        y = "Average MMR Rate") +
   theme_ai() +
   theme(axis.title = element_blank())
 ```
 
-# Exemptions (TBD)
+# Personal, Medical and Religious Exemptions
 
-The most common type of exemption reported by schools was personal (6,312), followed by medical (1,003). Religious exemptions were only reported by 109 (0.002%) schools. Washington was the only state that reported all three exemption types.
+The most common type of exemption reported by schools was personal (6,312), followed by medical (1,003). Religious exemptions were only reported by 109 (0.002%) schools. Washington was the only state that reported all three exemption types. 
 
-#CHARLIE: I couldn't get the ranges to include a percent sign, so I had to keep the y axis label. Is it possible to add % character to a character range label? The % also messed up my order and put 11-25 as the lowest bar. 
+```{r}
+#ggplot(data = measles_exemptions, 
+ #      mapping = aes(x = state, 
+  #                   y = exemption_type,
+   #                  fill = state)) +
+  #geom_col(show.legend = FALSE) +
+  #facet_wrap(~exemption_type) +
+  #coord_flip() +
+  #scale_fill_brewer(palette = "Set3") +
+  #labs(title = "States reported more personal exemptions than medical exemptions",
+  #     x = "Type of Exemption",
+   #    y = "State") +
+  #theme_ai()
+
+measles_exemptions %>% 
+  count(state, exemption_type) %>% 
+  ggplot(aes(n, state, fill = exemption_type)) +
+  geom_col() +
+  labs(fill = "Exemption Type") +
+  #scale_fill_brewer(palette = "Set3") +
+  labs(title = "States reported more personal exemptions than medical",
+       x = "Type of Exemption",
+       y = "State") +
+  theme_ai()
+
+```
+The majority of states had fewer than 5% of schools reporting student personal or medical exemptions. 
+
 ```{r}
 measles_exemptions %>%   
   count(state, exempt_ranges) %>% 
   drop_na(exempt_ranges) %>% 
   mutate(exempt_ranges = fct_relevel(exempt_ranges, c("Less than 1", "2 to 5", "6 to 10", "11 to 25", "26 to 50", "More than 50"))) %>% 
+  mutate(exempt_ranges = fct_recode(exempt_ranges, 
+                                    "Less than 1%" = "Less than 1",
+                                    "2 to 5%" = "2 to 5",
+                                    "6 to 10%" = "6 to 10",
+                                    "11 to 25%" = "11 to 25",
+                                    "26 to 50%" = "26 to 50",
+                                    "More than 50%" = "More than 50")) %>% 
   ggplot(aes(x = n,
          y = exempt_ranges,
          fill = state)) +
   geom_col(show.legend = TRUE) +
   scale_fill_brewer(palette = "Set3") +
+  labs(fill = "State") +
   labs(title = "Most states reported fewer than 5 percent exemptions\n(medical or personal)",
        x = "Number of Schools",
        y = "Ranges by Percent") +
-  theme_minimal(base_family = "Calibri") +
-  theme(axis.title.x = element_blank())
-```
-#CHARLIE:  What's happening at the bottom here? There's no axis scale, so I am thinking adding % labels, or numbers of students/exemptions for each state
-```{r}
-ggplot(data = measles_exemptions, 
-       mapping = aes(x = state, 
-                     y = exemption_type,
-                     fill = state)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~exemption_type) +
-  coord_flip() +
-  scale_fill_brewer(palette = "Set3") +
-  labs(title = "States reported more personal exemptions than medical exemptions",
-       x = "Type of Exemption",
-       y = "State") +
   theme_ai()
+
 ```
 
+*Wisconsin* reported a high number of personal exemptions compared to other states, which may have had an impact on its relatively low overall vaccination rate average compared to some other states. However, it did not report MMR rates to deduce the impact of exemptions on MMR vaccination rate in that state. 
+
+Similarly, *Washington's* higher exemption numbers may account for its lower average vaccination rates. Washington reported the largest number of medical exemptions of any state.
 
 
-# Individial State Analyses: Low MMR Vaccination Rates
+# Individual State Analyses: Low MMR Vaccination Rates 
 
 Arkansas and Washington reported the two lowest MMR vaccination rates (both below 90%). Only 2 Arkansas schools (0.4%) reported MMR vaccination rates above 95%.  As a state, Arkansas did not provide any exemption data, so it is difficult to determine how exemptions may have played a role in its low mean MMR rate.  
 
 While Wisconsin reported the highest number of exemptions, it did not report MMR vaccination rates, only overall vaccination rates, which were well below the U.S. average. The relationship between exemptions and low vaccination rates deserves further investigation when more complete data is available.
 
-WA reported a high number of exemptions compared to other states and the second lowest mean MMR vaccination rate. The majority of schools have not reached the recommended 95% MMR vaccination rate. 
+WA reported a high number of exemptions compared to other states and the second lowest mean MMR vaccination rate. Thirteen states have mean MMR rates below the recommended 95%.
 
-#CHARLIE: WOW what is happening here when I knit?
+
+```{r}
+measles_clean_rates %>% 
+  group_by(state) %>% 
+  summarize(mean_mmr_rate = mean(mmr, na.rm = TRUE)) %>% 
+  drop_na() %>% 
+  #round(mean_mmr_rate, digits = 2) %>% 
+  arrange(mean_mmr_rate) %>% 
+  slice_max(desc(mean_mmr_rate), n = 13) %>% 
+  gt() %>% 
+  cols_label(
+    state = "State",
+    mean_mmr_rate = "Mean MMR Rate") 
+```
+
 
 
 ```{r}
 clean_schools_mapping <- measles_clean_rates %>% 
   drop_na(lat,lng) %>% 
+  distinct() %>% 
   mutate(lat_from_lng = lng,
          long_from_lat = lat) %>% 
   st_as_sf(coords = c("lat_from_lng", "long_from_lat"), crs = 4326) 
@@ -332,6 +375,8 @@ clean_schools_mapping <- measles_clean_rates %>%
 ```
 
 
+#CHARLIE: 1. WOW what is happening here below when I knit (PART TWO): Did you say last time that the dataset for below doesn't have lat/lng? Because both clean_schools_mapping and wa_schools dataframes include distinct coordinates for mapping. I wonder if you had an old version for the last video? 
+#2. However you aptly brought up the observation of mapping duplicates, as it appears that the original measles dataset (and now subsequent dataframes) contains duplicates in some lat and lng coordinates for the same schools; off by tiny measurements (ex Centennial Elementary in wa_schools). How can I use distinct or unique to remove duplicates without lat/lng variables? Do I have to remove lat/lng columns from the dataframe, then go back and remove duplicates, and then join lat and lng variables back in? (See Measles Playground.R where I created a new measles_clean_rates, and tried to join in lat and long to that shorter dataframe).
 ```{r}
 
 counties_sf <- counties()
@@ -342,22 +387,29 @@ wa_counties_sf <- counties_sf %>%
 wa_schools <- clean_schools_mapping %>% 
   filter(mmr < 95) %>% 
   filter(state == "Washington") %>% 
+  distinct() %>% 
   rename(latitude = lng,
          longitude = lat) %>% 
   drop_na(latitude, longitude) %>% 
   st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
-
 ggplot() +
   geom_sf(data = wa_schools) +
   geom_sf(data = wa_counties_sf, alpha = 0) +
   labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+       family = "Calibri",
        x = "long",
        y = "lat") +
-  theme_ai()
+  theme_void(base_family = "Calibri") +
+  theme(plot.title = element_text(face = "bold"))
+  
 ```
 
 
 # Conclusions
+
+Overall, about 38% of schools across 32 states had MMR vaccination rates near the WHO recommended 95 percent needed to reach herd immunity, and the vast majority were above 90%. Across states, Washington and Arkansas were the only two states with rates below 90%.  Charter schools reported some of the lowest average MMR vaccination rates, while New York's BOCES schools and public schools led with the highest mean rates. On average, states reported small numbers of medical, personal or religious exemptions. States with high numbers of medical or personal exemptions did trend toward lower MMR rates, however the relationship deserves further analysis with more complete data. 
+
+Based on this report which reveals where MMR rates are lowest across the U.S., public health workers may gain insights for targeting future vaccination efforts for other diseases requiring high herd immunity. Although COVID-19 may need a lower community vaccination rate than measles to reach herd immunity, increasing efforts in Washington, Arkansas, and among charter schools could be a wise approach.
 
 
 
