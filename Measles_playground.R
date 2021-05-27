@@ -12,6 +12,23 @@ library(tigris)
 #library(mapview)
 
 
+#YAML for saving as PDF
+# knit: pagedown::chrome_print
+# output:
+#   pagedown::html_paged: 
+#   toc: TRUE
+# number_sections: FALSE
+
+#HTML
+# output: 
+#   html_document:
+#   df_print: kable
+# toc: TRUE
+
+#Slides (use --- to break each slide)
+# output:
+#   xaringan::moon_reader
+
 # ----Download file ------------------------------------------------
 
 # download.file(url = "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-25/measles.csv",
@@ -394,6 +411,7 @@ ggplot() +
   theme_minimal() +
   theme(axis.title = element_blank())
 
+
 wa_schools <- clean_schools_mapping %>% 
   filter(mmr < 95) %>% 
   filter(state == "Washington") %>% 
@@ -402,24 +420,25 @@ wa_schools <- clean_schools_mapping %>%
          longitude = lat) %>% 
   drop_na(latitude, longitude) %>% 
   st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+# ggplot() +
+#   geom_sf(data = wa_schools) +
+#   geom_sf(data = wa_counties_sf, alpha = 0) +
+#   labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+#        family = "Calibri",
+#        x = "long",
+#        y = "lat") +
+#   theme_void(base_family = "Calibri") +
+#   theme(plot.title = element_text(face = "bold"))
+
+# Map of WA Counties for Rmd
 ggplot() +
   geom_sf(data = wa_schools) +
   geom_sf(data = wa_counties_sf, alpha = 0) +
   labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
-       family = "Calibri",
        x = "long",
        y = "lat") +
   theme_void(base_family = "Calibri") +
   theme(plot.title = element_text(face = "bold"))
-
-#add county layers
-ggplot() +
-  geom_sf(data = wa_schools) +
-  geom_sf(data = wa_counties_sf, alpha = 0) +
-  labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
-       x = "long",
-       y = "lat") +
-  theme_ai()
 
   
 measles_clean_rates %>% 

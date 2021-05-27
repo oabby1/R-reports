@@ -2,9 +2,9 @@
 title: "Who's Getting Vaccinated for Measles in U.S. Schools?"
 author: "*Abby Isaacson*"
 date: "3/22/2021"
-output: 
+output:
   html_document:
-    df_print: kable
+    theme: yeti
     toc: TRUE
     
 ---
@@ -25,11 +25,13 @@ theme_ai <- function() {
 ```
 # Introduction
 
-> Could student vaccination rates for Measles, Mumps and Rubella (MMR) predict COVID-19 vaccination rates among schools, once a child vaccine becomes available?
+> *Could student vaccination rates for Measles, Mumps and Rubella (MMR) predict COVID-19 vaccination rates among schools, once a child vaccine becomes available?*
 
 Measles is disease that was essentially suppressed for 25 years in the U.S. through vaccination, but **showed a significant resurgence** in 2019.
 
 This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019. By looking at how many students have been abiding by state vaccine recommendations for MMR, public health organizations and schools may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
+
+
 
 ```{r}
 library(tidyverse)
@@ -88,6 +90,7 @@ school_types %>%
   theme_ai()
 ```
 
+
 Most reporting schools' enrollment numbers were below 500 for elementary/kindergarten classes. 
 #add frequencies
 ```{r, fig.height=5}
@@ -100,6 +103,7 @@ labs(title = "Most schools' enrollment numbers were small",
 theme_ai()
 
 ```
+
 
 
 # Vaccination Rates Among Reporting Schools
@@ -145,11 +149,12 @@ mean_allvax_rate_US <- measles_clean_rates %>%
   round()
 ```
 
+
+
 The mean vaccination rate among reporting schools was slightly below the *[WHO recommended goal of 95% needed to achieve herd immunity](https://www.who.int/news-room/q-a-detail/herd-immunity-lockdowns-and-covid-19).* The average MMR rate among all reporting schools (`r mean_mmr_rate_US`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate_US`%). One might expect overall vaccination rates to be slightly lower on average, since MMR has one of the highest WHO-recommended vaccination rates for reaching herd immunity compared to other diseases. 
 
 Among the 21 states that reported MMR rates, **eight states had average MMR vaccination rates above 95%**.  Illinois and Massachusetts reported the two highest rates (97.1%, 96.9%).  Arkansas reported the lowest mean vaccination rate (80.5%), followed by Washington (89.3%). 
 
-Among the 17 states that reported overall vaccination rates, North Carolina (96.83%) and Iowa (95.8%) reported the highest. Idaho's rate was lowest at 82.4%, which is still higher than the lowest mean MMR rate.
 
 ```{r}
 mean_mmr_state <- measles_clean_rates %>% 
@@ -194,6 +199,8 @@ ggplot(data = mean_mmr_state,
 ```
 
 
+
+Among the 17 states that reported overall vaccination rates, North Carolina (96.83%) and Iowa (95.8%) reported the highest. Idaho's rate was lowest at 82.4%, which is still higher than the lowest mean MMR rate.
 
 ```{r}
 mean_overall_state <- measles_clean_rates %>% 
@@ -277,6 +284,8 @@ mean_mmr_by_type_1 %>%
   theme(axis.title = element_blank())
 ```
 
+
+
 # Personal, Medical and Religious Exemptions
 
 The most common type of exemption reported by schools was personal (6,312), followed by medical (1,003). Religious exemptions were only reported by 109 (0.002%) schools. Washington was the only state that reported all three exemption types. 
@@ -307,6 +316,8 @@ measles_exemptions %>%
   theme_ai()
 
 ```
+
+
 The majority of states had fewer than 5% of schools reporting student personal or medical exemptions. 
 
 ```{r}
@@ -339,13 +350,16 @@ measles_exemptions %>%
 Similarly, *Washington's* higher exemption numbers may account for its lower average vaccination rates. Washington reported the largest number of medical exemptions of any state.
 
 
+
 # Individual State Analyses: Low MMR Vaccination Rates 
 
 Arkansas and Washington reported the two lowest MMR vaccination rates (both below 90%). Only 2 Arkansas schools (0.4%) reported MMR vaccination rates above 95%.  As a state, Arkansas did not provide any exemption data, so it is difficult to determine how exemptions may have played a role in its low mean MMR rate.  
 
 While Wisconsin reported the highest number of exemptions, it did not report MMR vaccination rates, only overall vaccination rates, which were well below the U.S. average. The relationship between exemptions and low vaccination rates deserves further investigation when more complete data is available.
 
-WA reported a high number of exemptions compared to other states and the second lowest mean MMR vaccination rate. Thirteen states have mean MMR rates below the recommended 95%.
+
+
+Washington reported a high number of exemptions compared to other states and the second lowest mean MMR vaccination rate. Thirteen states have mean MMR rates below the recommended 95%.
 
 
 ```{r}
@@ -375,23 +389,24 @@ clean_schools_mapping <- measles_clean_rates %>%
 ```
 
 
+
 #CHARLIE: 1. WOW what is happening here below when I knit (PART TWO): Did you say last time that the dataset for below doesn't have lat/lng? Because both clean_schools_mapping and wa_schools dataframes include distinct coordinates for mapping. I wonder if you had an old version for the last video? 
 #2. However you aptly brought up the observation of mapping duplicates, as it appears that the original measles dataset (and now subsequent dataframes) contains duplicates in some lat and lng coordinates for the same schools; off by tiny measurements (ex Centennial Elementary in wa_schools). How can I use distinct or unique to remove duplicates without lat/lng variables? Do I have to remove lat/lng columns from the dataframe, then go back and remove duplicates, and then join lat and lng variables back in? (See Measles Playground.R where I created a new measles_clean_rates, and tried to join in lat and long to that shorter dataframe).
 ```{r}
 
 counties_sf <- counties()
 
-wa_counties_sf <- counties_sf %>% 
+wa_counties_sf <- counties_sf %>%
   filter(STATEFP == 53)
 
-wa_schools <- clean_schools_mapping %>% 
-  filter(mmr < 95) %>% 
-  filter(state == "Washington") %>% 
-  distinct() %>% 
+wa_schools <- clean_schools_mapping %>%
+  filter(mmr < 95) %>%
+  filter(state == "Washington") %>%
+  distinct() %>%
   rename(latitude = lng,
-         longitude = lat) %>% 
-  drop_na(latitude, longitude) %>% 
-  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+         longitude = lat) %>%
+  drop_na(latitude, longitude) %>%
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326)
 ggplot() +
   geom_sf(data = wa_schools) +
   geom_sf(data = wa_counties_sf, alpha = 0) +
@@ -403,6 +418,7 @@ ggplot() +
   theme(plot.title = element_text(face = "bold"))
   
 ```
+
 
 
 # Conclusions
