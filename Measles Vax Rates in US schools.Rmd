@@ -12,7 +12,8 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, 
                       message = FALSE,
-                      warning = FALSE)
+                      warning = FALSE,
+                      fig.width = 9)
 ```
 
 
@@ -29,8 +30,7 @@ theme_ai <- function() {
 
 Measles is disease that was essentially suppressed for 25 years in the U.S. through vaccination, but **showed a significant resurgence** in 2019.
 
-This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019. By looking at how many students have been abiding by state vaccine recommendations for MMR, public health organizations and schools may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
-
+This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019. By looking at how many schools have reached state vaccine recommendations for MMR, public health organizations may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
 
 
 ```{r}
@@ -91,8 +91,8 @@ school_types %>%
 ```
 
 
-Most reporting schools' enrollment numbers were below 500 for elementary/kindergarten classes. 
-#add frequencies
+The majority of reporting schools' enrollment numbers were smaller than 250 students for elementary/kindergarten classes, although a few schools reported as many as 6,000 students (likely included all school enrollment, not just kindergarten).
+
 ```{r, fig.height=5}
 measles_clean_rates %>% 
   ggplot(aes(x = enroll)) +
@@ -105,7 +105,6 @@ theme_ai()
 ```
 
 
-
 # Vaccination Rates Among Reporting Schools
 Most individual schools reported MMR vaccination rates above 90%, while overall vaccination rates were slightly lower and more unevenly distributed:
 
@@ -115,21 +114,24 @@ measles_clean_rates %>%
   geom_histogram(bins = 100) +
   scale_x_continuous(labels = percent_format(scale = 1)) +
   labs(title = "Schools' MMR vaccination rates were slightly higher than the overall rates",
-       x = "MMR Vaccination Rate",
+       x = "MMR",
        y = "Number of Schools")+
-  theme_ai() -> p1
+  theme_minimal(base_family = "Calibri") +
+  theme(axis.title.y = element_blank(),
+        plot.title = element_text(face = "bold"))  -> p1
 ```
 
 
-```{r, fig.width=8}
+```{r}
 measles_clean_rates %>% 
   ggplot(aes(x = overall)) +
   geom_histogram(bins = 100) +
   scale_x_continuous(labels = percent_format(scale = 1)) +
-  #labs(title = "Schools' overall vaccination rates\nwere mostly high",
-   #    x = "Overall Vaccination Rate",
-    #   y = "Number of Schools")+
-  theme_ai() -> p2
+  labs(x = "Overall",
+     y = "Number of Schools") +
+  theme_minimal(base_family = "Calibri") +
+  theme(axis.title.y = element_blank(),
+        plot.title = element_text(face = "bold")) -> p2
 
 grid.arrange(p1, p2, ncol = 2)
 ```
@@ -151,9 +153,9 @@ mean_allvax_rate_US <- measles_clean_rates %>%
 
 
 
-The mean vaccination rate among reporting schools was slightly below the *[WHO recommended goal of 95% needed to achieve herd immunity](https://www.who.int/news-room/q-a-detail/herd-immunity-lockdowns-and-covid-19).* The average MMR rate among all reporting schools (`r mean_mmr_rate_US`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate_US`%). One might expect overall vaccination rates to be slightly lower on average, since MMR has one of the highest WHO-recommended vaccination rates for reaching herd immunity compared to other diseases. 
+The mean MMR vaccination rate among reporting schools was slightly below the *[WHO recommended goal of 95% needed to achieve herd immunity](https://www.who.int/news-room/q-a-detail/herd-immunity-lockdowns-and-covid-19).* The average MMR rate among all reporting schools (`r mean_mmr_rate_US`%) was slightly higher than the overall reported vaccination rate (`r mean_allvax_rate_US`%). One might expect overall vaccination rates to be slightly lower on average, since MMR has one of the highest WHO-recommended vaccination rates for reaching herd immunity compared to other diseases. 
 
-Among the 21 states that reported MMR rates, **eight states had average MMR vaccination rates above 95%**.  Illinois and Massachusetts reported the two highest rates (97.1%, 96.9%).  Arkansas reported the lowest mean vaccination rate (80.5%), followed by Washington (89.3%). 
+Among the 21 states that reported MMR rates, **eight states (38%) had average MMR vaccination rates above 95%**.  Illinois and Massachusetts reported the two highest rates (97.1%, 96.9%).  Arkansas reported the lowest mean vaccination rate (80.5%), followed by Washington (89.3%). 
 
 
 ```{r}
@@ -200,7 +202,7 @@ ggplot(data = mean_mmr_state,
 
 
 
-Among the 17 states that reported overall vaccination rates, North Carolina (96.83%) and Iowa (95.8%) reported the highest. Idaho's rate was lowest at 82.4%, which is still higher than the lowest mean MMR rate.
+Among the 17 states that reported overall vaccination rates, North Carolina (96.83%) and Iowa (95.8%) reported the highest rates. Idaho was lowest at 82.4%, followed by four other states with rates below 90%: Washington, Wisconsin, Colorado and Ohio. 
 
 ```{r}
 mean_overall_state <- measles_clean_rates %>% 
@@ -235,9 +237,10 @@ ggplot(data = mean_overall_state,
 
 
 
-Mean MMR vaccination rates varied somewhat by *school type*. BOCES schools in NY reported the highest mean MMR rates, followed closely by public schools (both above 95%). Charter schools averaged the lowest MMR rate (just below 90%). 
+Mean MMR vaccination rates varied somewhat by *school type*. BOCES schools in New York reported the highest mean MMR rates, followed closely by public schools (both above 95%). Charter schools averaged the lowest MMR rate (just below 90%). 
 
-Not all school types reported overall vaccination rates, which were lower than MMR rates among types that did report (between 88-93%).
+Not all school types reported overall vaccination rates, which were lower than MMR rates (between 88-93%). 
+
 ```{r}
 mean_mmr_by_type <- measles_clean_rates %>% 
   group_by(type) %>% 
@@ -318,7 +321,7 @@ measles_exemptions %>%
 ```
 
 
-The majority of states had fewer than 5% of schools reporting student personal or medical exemptions. 
+The majority of states had less than 5% of their schools reporting small numbers student personal or medical exemptions. 
 
 ```{r}
 measles_exemptions %>%   
@@ -345,21 +348,16 @@ measles_exemptions %>%
 
 ```
 
-*Wisconsin* reported a high number of personal exemptions compared to other states, which may have had an impact on its relatively low overall vaccination rate average compared to some other states. However, it did not report MMR rates to deduce the impact of exemptions on MMR vaccination rate in that state. 
+*Wisconsin* reported a high number of personal exemptions compared to other states, which may have had an impact on its relatively low overall vaccination rate average. However, it did not report MMR rates, which limits one's ability to deduce the impact of exemptions on MMR vaccination rate in that state. 
 
-Similarly, *Washington's* higher exemption numbers may account for its lower average vaccination rates. Washington reported the largest number of medical exemptions of any state.
-
+*Washington's* higher exemption numbers may account for its lower average vaccination rates. Washington reported the largest number of medical exemptions of any state.
 
 
 # Individual State Analyses: Low MMR Vaccination Rates 
 
-Arkansas and Washington reported the two lowest MMR vaccination rates (both below 90%). Only 2 Arkansas schools (0.4%) reported MMR vaccination rates above 95%.  As a state, Arkansas did not provide any exemption data, so it is difficult to determine how exemptions may have played a role in its low mean MMR rate.  
+Thirteen states (or 61%) have mean MMR rates below the recommended 95%. *Arkansas* and *Washington* reported the two lowest MMR vaccination rates (both below 90%). Only two Arkansas schools (0.4%) reported MMR vaccination rates above 95%.  Arkansas did not provide any exemption data, so it is difficult to determine how exemptions may have played a role in its low mean MMR rate.  Washington reported a high number of exemptions compared to other states and the second lowest mean MMR vaccination rate. 
 
-While Wisconsin reported the highest number of exemptions, it did not report MMR vaccination rates, only overall vaccination rates, which were well below the U.S. average. The relationship between exemptions and low vaccination rates deserves further investigation when more complete data is available.
-
-
-
-Washington reported a high number of exemptions compared to other states and the second lowest mean MMR vaccination rate. Thirteen states have mean MMR rates below the recommended 95%.
+Again, while *Wisconsin* reported the highest number of exemptions, it did not report MMR vaccination rates, only overall vaccination rates, which were well below the U.S. average. The relationship between exemptions and low vaccination rates deserves further investigation when more complete data is available.
 
 
 ```{r}
@@ -389,12 +387,11 @@ clean_schools_mapping <- measles_clean_rates %>%
 ```
 
 
+A map of Washington state schools whose mean MMR rates were below 95% shows clusters of schools across counties and surrounding urban areas. Sixty-two percent of Washington schools had rates below the recommended 95% (black points on the map). Schools with sufficient rates appear in light blue:
 
-#CHARLIE: 1. WOW what is happening here below when I knit (PART TWO): Did you say last time that the dataset for below doesn't have lat/lng? Because both clean_schools_mapping and wa_schools dataframes include distinct coordinates for mapping. I wonder if you had an old version for the last video? 
-#2. However you aptly brought up the observation of mapping duplicates, as it appears that the original measles dataset (and now subsequent dataframes) contains duplicates in some lat and lng coordinates for the same schools; off by tiny measurements (ex Centennial Elementary in wa_schools). How can I use distinct or unique to remove duplicates without lat/lng variables? Do I have to remove lat/lng columns from the dataframe, then go back and remove duplicates, and then join lat and lng variables back in? (See Measles Playground.R where I created a new measles_clean_rates, and tried to join in lat and long to that shorter dataframe).
-```{r}
+```{r results = "hide"}
 
-counties_sf <- counties()
+counties_sf <- counties(state = 53)
 
 wa_counties_sf <- counties_sf %>%
   filter(STATEFP == 53)
@@ -407,35 +404,44 @@ wa_schools <- clean_schools_mapping %>%
          longitude = lat) %>%
   drop_na(latitude, longitude) %>%
   st_as_sf(coords = c("latitude", "longitude"), crs = 4326)
+
+wa_schools_yay <- clean_schools_mapping %>%
+  filter(mmr > 95) %>%
+  filter(state == "Washington") %>%
+  distinct() %>%
+  rename(latitude = lng,
+         longitude = lat) %>%
+  drop_na(latitude, longitude) %>%
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326)
+
 ggplot() +
+  geom_sf(data = wa_schools_yay, color = "lightblue") +
   geom_sf(data = wa_schools) +
   geom_sf(data = wa_counties_sf, alpha = 0) +
-  labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+  labs(title = "WA schools with MMR vaccination rates <span style = 'color: lightblue'>above</span> and below 95 percent",
        family = "Calibri",
        x = "long",
        y = "lat") +
   theme_void(base_family = "Calibri") +
-  theme(plot.title = element_text(face = "bold"))
+  theme(plot.title = element_markdown(face = "bold"))
+  
   
 ```
 
 
-
 # Conclusions
 
-Overall, about 38% of schools across 32 states had MMR vaccination rates near the WHO recommended 95 percent needed to reach herd immunity, and the vast majority were above 90%. Across states, Washington and Arkansas were the only two states with rates below 90%.  Charter schools reported some of the lowest average MMR vaccination rates, while New York's BOCES schools and public schools led with the highest mean rates. On average, states reported small numbers of medical, personal or religious exemptions. States with high numbers of medical or personal exemptions did trend toward lower MMR rates, however the relationship deserves further analysis with more complete data. 
+About 38% of schools across 32 states had MMR vaccination rates near the WHO recommended 95 percent needed to reach herd immunity, yet the vast majority had rates above 90%, indicating efforts to obtain a 95% rate are within close reach. Across states, Washington and Arkansas were the only two states with mean MMR rates below 90%.  Charter schools reported some of the lowest average MMR vaccination rates, while New York's BOCES schools and public schools led with the highest rates. On average, states reported small numbers of medical, personal or religious exemptions. States with high numbers of medical or personal exemptions did trend toward lower MMR rates, however the relationship deserves further analysis since numbers were very small. 
 
-Based on this report which reveals where MMR rates are lowest across the U.S., public health workers may gain insights for targeting future vaccination efforts for other diseases requiring high herd immunity. Although COVID-19 may need a lower community vaccination rate than measles to reach herd immunity, increasing efforts in Washington, Arkansas, and among charter schools could be a wise approach.
-
-
+Based on this report, which reveals where MMR vaccination rates are lowest across the U.S., public health workers may gain insights for targeting future vaccination efforts for other diseases requiring high herd immunity. Although COVID-19 may need a lower community vaccination rate than Measles, Mumps and Rubella to reach herd immunity, increasing efforts in Washington, Arkansas, Wisconsin, and among charter schools could be a place to start. With regard to low overall vaccination rates and not just MMR rates, the data shows that Idaho, Colorado and Ohio are additional states to garner our attention and perhaps enhance outreach efforts.  
 
 
-#GITHUB: take this to a repository
+<!-- #GITHUB: take this to a repository -->
 
-install.packages("usethis")
-library(usethis)
+<!-- install.packages("usethis") -->
+<!-- library(usethis) -->
 
-use_git()
+<!-- use_git() -->
 
-##send to github
-use_github(organisation = "rin3-spring-2021", private = TRUE)
+<!-- ##send to github -->
+<!-- use_github(organisation = "rin3-spring-2021", private = TRUE) -->
