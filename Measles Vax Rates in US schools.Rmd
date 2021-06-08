@@ -8,6 +8,7 @@ output:
     toc: TRUE
     
 ---
+#chrome_print("measles-slides.html")
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, 
@@ -45,6 +46,7 @@ library(tigris)
 library(sf)
 library(gridExtra)
 library(gt)
+library(pagedown)
 ```
 
 ```{r}

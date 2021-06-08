@@ -5,6 +5,7 @@ date: "3/22/2021"
 knit: pagedown::chrome_print
 output:
   pagedown::html_paged:
+    pagedreport::paged_hazelnuts
   toc: TRUE
   number_sections: FALSE
     
@@ -46,6 +47,7 @@ library(tigris)
 library(sf)
 library(gridExtra)
 library(gt)
+#remotes::install_github("rfortherestofus/pagedreport", ref = "main")
 ```
 
 ```{r}
