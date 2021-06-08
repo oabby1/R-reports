@@ -121,6 +121,19 @@ measles_clean_rates %>%
         plot.title = element_text(face = "bold"))  -> p1
 ```
 
+```{r}
+measles_clean_rates %>% 
+  select(mmr, overall) %>% 
+  pivot_longer(mmr:overall) %>% 
+  filter(!is.na(value)) %>% 
+  filter(value > 75) %>% 
+  ggplot(aes(x = value,
+             y = "1")) +
+  # geom_histogram(bins = 100) +
+  geom_violin() +
+  facet_wrap(~ name)
+```
+
 
 ```{r}
 measles_clean_rates %>% 

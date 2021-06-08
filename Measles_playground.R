@@ -476,6 +476,50 @@ ggplot() +
   theme_void(base_family = "Calibri") -> wa_plot
   #theme(plot.title = element_markdown(face = "bold")) 
 
+
+library(leaflet)
+
+# Start off a map like so!
+wa_schools_yay %>% 
+  leaflet()
+
+leaflet() %>% 
+  addPolygons(data = wa_counties_sf,
+              weight = 1,
+              color = "black",
+              fillColor = "white") %>% 
+  addMarkers(data = wa_schools_yay)
+
+# If no tiles then to add a background color
+# Use the leaflet.extras package
+
+library(leaflet.extras)
+
+leaflet() %>% 
+  # addProviderTiles(providers$Esri.WorldShadedRelief) %>% 
+  addPolygons(data = wa_counties_sf,
+              weight = 1,
+              fillOpacity = 1,
+              color = "black",
+              fillColor = "white") %>%
+  addCircleMarkers(data = wa_schools_yay,
+                   stroke = FALSE,
+                   fillOpacity = 0.8,
+                   radius = 2, 
+                   fillColor = "blue",
+                   label = ~name
+                   ) %>% 
+  addCircleMarkers(data = wa_schools,
+                   stroke = FALSE,
+                   fillColor = "red",
+                   fillOpacity = 0.8,
+                   radius = 2, 
+                   label = ~name
+  ) %>% 
+  setMapWidgetStyle(style = list(background = "white"))
+
+
+
 #CHARLIE how can I add hovering with school names rather than geolocation?
 plot_ly(wa_schools_yay)
 
