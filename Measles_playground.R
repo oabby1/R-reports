@@ -9,8 +9,7 @@ library(skimr)
 library(readr)
 library(sf)
 library(tigris)
-#library(mapview)
-
+library(plotly)
 
 #YAML for saving as PDF
 # knit: pagedown::chrome_print
@@ -48,20 +47,19 @@ measles_clean_rates <- measles %>%
   mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
   distinct()
 
-#CHARLIE here is the new dataframe to use for rejoining lat/lng later (43,233 rows);
-#I took out negative mmr rates and replace w NA, took out lat/lng, removed duplicates
-measles_clean_rates_2 <- measles %>% 
-  select(state, name, type, enroll, mmr, overall) %>% 
-  mutate(overall = ifelse(overall < 0, NA, overall)) %>% 
-  mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
-  distinct()
+# #CHARLIE here is the new dataframe to use for rejoining lat/lng later (43,233 rows);
+# #I took out negative mmr rates and replace w NA, took out lat/lng, removed duplicates
+# measles_clean_rates_2 <- measles %>% 
+#   select(state, name, type, enroll, mmr, overall) %>% 
+#   mutate(overall = ifelse(overall < 0, NA, overall)) %>% 
+#   mutate(mmr = ifelse(mmr < 0, NA, mmr)) %>% 
+#   distinct()
+# 
+# #CHARLIE HELP here: how to add lat/long back in to just these 43,233 rows? below gives me 64426. Then I'll rename as measles_clean_rates so it updates all my other analyses. 
+# measles_clean_rates_2 %>% 
+#   left_join(clean_schools_mapping)
 
-#CHARLIE HELP here: how to add lat/long back in to just these 43,233 rows? below gives me 64426. Then I'll rename as measles_clean_rates so it updates all my other analyses. 
-measles_clean_rates_2 %>% 
-  left_join(clean_schools_mapping)
 
-
-______
 
 #Not going to analyze by year: 484+1515(WI only) schools reported for 2018-19, 567 schools reported for 2017-18, 1567 null (NA). 
 #The index ID assigned is not unique. Ignoring. Not interested by school. 
@@ -270,6 +268,10 @@ ggplot(data = measles_exemptions,
 mean_mmr_state %>% 
   arrange(mean_mmr_rate)
 
+# overall low to high
+mean_overall_state %>% 
+  arrange(mean_allvax_rate)
+
 # Look at rates in WA (no enrollment data)
 
 WA_clean_rates <- measles %>% 
@@ -355,7 +357,7 @@ ggplot(data = mean_mmr_by_type_1,
 
 # Mapping clean schools
 
-counties_sf <- counties()
+counties_sf <- counties(state = 53)
 
 clean_schools_mapping <- measles_clean_rates %>% 
   drop_na(lat,lng) %>% 
@@ -393,13 +395,13 @@ washington_sf <- states() %>%
 wa_counties_sf <- counties_sf %>% 
   filter(STATEFP == 53)
 
-wa_schools <- clean_schools_mapping %>% 
-  filter(mmr < 95) %>% 
-  filter(state == "Washington") %>% 
-  rename(latitude = lng,
-         longitude = lat) %>% 
-  drop_na(latitude, longitude) %>% 
-  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+# wa_schools <- clean_schools_mapping %>% 
+#   filter(mmr < 95) %>% 
+#   filter(state == "Washington") %>% 
+#   rename(latitude = lng,
+#          longitude = lat) %>% 
+#   drop_na(latitude, longitude) %>% 
+#   st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
 
 #switch the geom_sf layers if removing alpha for color and fill preferences
 ggplot() +
@@ -412,14 +414,14 @@ ggplot() +
   theme(axis.title = element_blank())
 
 
-wa_schools <- clean_schools_mapping %>% 
-  filter(mmr < 95) %>% 
-  filter(state == "Washington") %>% 
-  distinct() %>% 
-  rename(latitude = lng,
-         longitude = lat) %>% 
-  drop_na(latitude, longitude) %>% 
-  st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
+# wa_schools <- clean_schools_mapping %>% 
+#   filter(mmr < 95) %>% 
+#   filter(state == "Washington") %>% 
+#   distinct() %>% 
+#   rename(latitude = lng,
+#          longitude = lat) %>% 
+#   drop_na(latitude, longitude) %>% 
+#   st_as_sf(coords = c("latitude", "longitude"), crs = 4326) 
 # ggplot() +
 #   geom_sf(data = wa_schools) +
 #   geom_sf(data = wa_counties_sf, alpha = 0) +
@@ -431,19 +433,54 @@ wa_schools <- clean_schools_mapping %>%
 #   theme(plot.title = element_text(face = "bold"))
 
 # Map of WA Counties for Rmd
-ggplot() +
-  geom_sf(data = wa_schools) +
-  geom_sf(data = wa_counties_sf, alpha = 0) +
-  labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
-       x = "long",
-       y = "lat") +
-  theme_void(base_family = "Calibri") +
-  theme(plot.title = element_text(face = "bold"))
+# ggplot() +
+#   geom_sf(data = wa_schools) +
+#   geom_sf(data = wa_counties_sf, alpha = 0) +
+#   labs(title = "60% of WA schools had MMR vaccination rates below 95 percent",
+#        x = "long",
+#        y = "lat") +
+#   theme_void(base_family = "Calibri") +
+#   theme(plot.title = element_text(face = "bold"))
 
   
 measles_clean_rates %>% 
   filter(state == "Washington") %>% 
   filter(mmr < 95)
+
+wa_schools <- clean_schools_mapping %>%
+  filter(mmr < 95) %>%
+  filter(state == "Washington") %>%
+  distinct() %>%
+  rename(latitude = lng,
+         longitude = lat) %>%
+  drop_na(latitude, longitude) %>%
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326)
+
+wa_schools_yay <- clean_schools_mapping %>%
+  filter(mmr > 95) %>%
+  filter(state == "Washington") %>%
+  distinct() %>%
+  rename(latitude = lng,
+         longitude = lat) %>%
+  drop_na(latitude, longitude) %>%
+  st_as_sf(coords = c("latitude", "longitude"), crs = 4326)
+
+ggplot() +
+  geom_sf(data = wa_schools_yay, color = "lightblue") +
+  geom_sf(data = wa_schools) +
+  geom_sf(data = wa_counties_sf, alpha = 0) +
+  labs(title = "WA schools with MMR vaccination rates <span style = 'color: lightblue'>above</span> and below 95 percent",
+       family = "Calibri",
+       x = "long",
+       y = "lat") +
+  theme_void(base_family = "Calibri") -> wa_plot
+  #theme(plot.title = element_markdown(face = "bold")) 
+
+#CHARLIE how can I add hovering with school names rather than geolocation?
+plot_ly(wa_schools_yay)
+
+ggplotly(wa_schools)
+
 
 1332/2203
 

@@ -2,10 +2,11 @@
 title: "Who's Getting Vaccinated for Measles in U.S. Schools?"
 author: "*Abby Isaacson*"
 date: "3/22/2021"
+knit: pagedown::chrome_print
 output:
-  html_document:
-    theme: yeti
-    toc: TRUE
+  pagedown::html_paged:
+  toc: TRUE
+  number_sections: FALSE
     
 ---
 
@@ -30,7 +31,7 @@ theme_ai <- function() {
 
 Measles is disease that was essentially suppressed for 25 years in the U.S. through vaccination, but **showed a significant resurgence** in 2019.
 
-This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019.^[Source: The Wall Street Journal] By looking at how many schools have reached state vaccine recommendations for MMR, public health organizations may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
+This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019. By looking at how many schools have reached state vaccine recommendations for MMR, public health organizations may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
 
 
 ```{r}
