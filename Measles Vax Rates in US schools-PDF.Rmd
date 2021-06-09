@@ -3,9 +3,7 @@ title: "Who's Getting Vaccinated for Measles in U.S. Schools?"
 author: "*Abby Isaacson*"
 date: "3/22/2021"
 knit: pagedown::chrome_print
-output:
-  pagedown::html_paged:
-    pagedreport::paged_hazelnuts
+pagedreport::paged_grid:
   toc: TRUE
   number_sections: FALSE
     
@@ -32,7 +30,7 @@ theme_ai <- function() {
 
 Measles is disease that was essentially suppressed for 25 years in the U.S. through vaccination, but **showed a significant resurgence** in 2019.
 
-This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019. By looking at how many schools have reached state vaccine recommendations for MMR, public health organizations may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
+This report examines data from 32 states and more than 46,000 schools that reported student measles, mumps and rubella (MMR) vaccination data for kindergarten students between 2017 and 2019.^[Source: The Wall Street Journal] By looking at how many schools have reached state vaccine recommendations for MMR, public health organizations may better target future vaccination outreach efforts for COVID-19 to prevent disease outbreaks among students in the future.
 
 
 ```{r}
@@ -47,7 +45,9 @@ library(tigris)
 library(sf)
 library(gridExtra)
 library(gt)
-#remotes::install_github("rfortherestofus/pagedreport", ref = "main")
+library(leaflet)
+library(leaflet.extras)
+remotes::install_github("rfortherestofus/pagedreport", ref = "main")
 ```
 
 ```{r}
@@ -112,31 +112,53 @@ theme_ai()
 Most individual schools reported MMR vaccination rates above 90%, while overall vaccination rates were slightly lower and more unevenly distributed:
 
 ```{r}
+# measles_clean_rates %>% 
+#   filter(mmr > 75) %>% 
+#   ggplot(aes(x = mmr)) +
+#   geom_histogram(bins = 120) +
+#   scale_x_continuous(labels = percent_format(scale = 1)) +
+#   labs(title = "Schools' MMR vaccination rates were slightly higher than the overall rates",
+#        x = "MMR",
+#        y = "Number of Schools")+
+#   theme_minimal(base_family = "Calibri") +
+#   theme(axis.title.y = element_blank(),
+#         plot.title = element_text(face = "bold"))  -> p1
+```
+
+```{r}
 measles_clean_rates %>% 
-  ggplot(aes(x = mmr)) +
-  geom_histogram(bins = 100) +
+  select(mmr, overall) %>% 
+  pivot_longer(mmr:overall) %>% 
+  filter(!is.na(value)) %>% 
+  filter(value > 75) %>% 
+  ggplot(aes(x = value,
+             y = "1")) +
+  #geom_histogram(bins = 100) +
+  geom_violin() +
+  facet_wrap(~ name) +
   scale_x_continuous(labels = percent_format(scale = 1)) +
-  labs(title = "Schools' MMR vaccination rates were slightly higher than the overall rates",
-       x = "MMR",
-       y = "Number of Schools")+
+  labs(title = "Schools reported higher rates and greater density variation for MMR vaccinations\ncompared to overal vaccinations") + 
+       #x = "Percent",
+       #y = "Number of Schools") +
   theme_minimal(base_family = "Calibri") +
-  theme(axis.title.y = element_blank(),
-        plot.title = element_text(face = "bold"))  -> p1
+  theme(axis.title = element_blank(),
+      plot.title = element_text(face = "bold"))
 ```
 
 
 ```{r}
-measles_clean_rates %>% 
-  ggplot(aes(x = overall)) +
-  geom_histogram(bins = 100) +
-  scale_x_continuous(labels = percent_format(scale = 1)) +
-  labs(x = "Overall",
-     y = "Number of Schools") +
-  theme_minimal(base_family = "Calibri") +
-  theme(axis.title.y = element_blank(),
-        plot.title = element_text(face = "bold")) -> p2
-
-grid.arrange(p1, p2, ncol = 2)
+# measles_clean_rates %>% 
+#   filter(overall > 75) %>% 
+#   ggplot(aes(x = overall)) +
+#   geom_histogram(bins = 75) +
+#   scale_x_continuous(labels = percent_format(scale = 1)) +
+#   labs(x = "Overall",
+#      y = "Number of Schools") +
+#   theme_minimal(base_family = "Calibri") +
+#   theme(axis.title.y = element_blank(),
+#         plot.title = element_text(face = "bold")) -> p2
+# 
+# grid.arrange(p1, p2, ncol = 2)
 ```
 
 
@@ -390,7 +412,6 @@ clean_schools_mapping <- measles_clean_rates %>%
 ```
 
 
-A map of Washington state schools whose mean MMR rates were below 95% shows clusters of schools across counties and surrounding urban areas. Sixty-two percent of Washington schools had rates below the recommended 95% (black points on the map). Schools with sufficient rates appear in light blue:
 
 ```{r results = "hide"}
 
@@ -417,18 +438,51 @@ wa_schools_yay <- clean_schools_mapping %>%
   drop_na(latitude, longitude) %>%
   st_as_sf(coords = c("latitude", "longitude"), crs = 4326)
 
-ggplot() +
-  geom_sf(data = wa_schools_yay, color = "lightblue") +
-  geom_sf(data = wa_schools) +
-  geom_sf(data = wa_counties_sf, alpha = 0) +
-  labs(title = "WA schools with MMR vaccination rates <span style = 'color: lightblue'>above</span> and below 95 percent",
-       family = "Calibri",
-       x = "long",
-       y = "lat") +
-  theme_void(base_family = "Calibri") +
-  theme(plot.title = element_markdown(face = "bold"))
+# ggplot() +
+#   geom_sf(data = wa_schools_yay, color = "lightblue") +
+#   geom_sf(data = wa_schools) +
+#   geom_sf(data = wa_counties_sf, alpha = 0) +
+#   labs(title = "WA schools with MMR vaccination rates <span style = 'color: lightblue'>above</span> and below 95 percent",
+#        family = "Calibri",
+#        x = "long",
+#        y = "lat") +
+#   theme_void(base_family = "Calibri") +
+#   theme(plot.title = element_markdown(face = "bold"))
   
   
+```
+
+
+
+A map of Washington state schools whose mean MMR rates were below 95% shows clusters of schools across counties and surrounding urban areas. Sixty-two percent of Washington schools had rates below the recommended 95% (black points on the map). Schools with sufficient rates appear in light blue:
+
+**WA schools with MMR vaccination rates <span style = 'color: lightblue'>above</span> and below 95 percent**
+
+```{r}
+
+leaflet() %>% 
+  addPolygons(data = wa_counties_sf,
+              weight = 1,
+              fillOpacity = 1,
+              color = "black",
+              fillColor = "white") %>%
+  addCircleMarkers(data = wa_schools_yay,
+                   stroke = FALSE,
+                   fillOpacity = 0.8,
+                   radius = 2, 
+                   fillColor = "lightblue",
+                   label = ~name
+                   ) %>% 
+  addCircleMarkers(data = wa_schools,
+                   stroke = FALSE,
+                   fillColor = "black",
+                   fillOpacity = 0.8,
+                   radius = 2, 
+                   label = ~name
+  ) %>% 
+  setMapWidgetStyle(style = list(background = "white"))
+
+
 ```
 
 
@@ -437,14 +491,3 @@ ggplot() +
 About 38% of schools across 32 states had MMR vaccination rates near the WHO recommended 95 percent needed to reach herd immunity, yet the vast majority had rates above 90%, indicating efforts to obtain a 95% rate are within close reach. Across states, Washington and Arkansas were the only two states with mean MMR rates below 90%.  Charter schools reported some of the lowest average MMR vaccination rates, while New York's BOCES schools and public schools led with the highest rates. On average, states reported small numbers of medical, personal or religious exemptions. States with high numbers of medical or personal exemptions did trend toward lower MMR rates, however the relationship deserves further analysis since numbers were very small. 
 
 Based on this report, which reveals where MMR vaccination rates are lowest across the U.S., public health workers may gain insights for targeting future vaccination efforts for other diseases requiring high herd immunity. Although COVID-19 may need a lower community vaccination rate than Measles, Mumps and Rubella to reach herd immunity, increasing efforts in Washington, Arkansas, Wisconsin, and among charter schools could be a place to start. With regard to low overall vaccination rates and not just MMR rates, the data shows that Idaho, Colorado and Ohio are additional states to garner our attention and perhaps enhance outreach efforts.  
-
-
-<!-- #GITHUB: take this to a repository -->
-
-<!-- install.packages("usethis") -->
-<!-- library(usethis) -->
-
-<!-- use_git() -->
-
-<!-- ##send to github -->
-<!-- use_github(organisation = "rin3-spring-2021", private = TRUE) -->
